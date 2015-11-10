@@ -1,0 +1,17 @@
+!*==mod_common.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
+      MODULE MOD_COMMON
+      IMPLICIT NONE
+!*--MOD_COMMON4
+      TYPE REGION
+         DOUBLE PRECISION XMIN , XMAX , YMIN , YMAX , DAMPED_WIDTH
+      END TYPE REGION
+!
+ 
+      TYPE MD_THERMOSTAT
+         CHARACTER(LEN=16) :: TYPE
+         CHARACTER(LEN=16) :: DAMPING_MODE
+      END TYPE MD_THERMOSTAT
+
+      
+      
+      END MODULE MOD_COMMON

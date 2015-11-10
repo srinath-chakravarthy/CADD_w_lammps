@@ -1,0 +1,77 @@
+c $Id: disl_parameters.par,v 1.1.1.1 2003/03/12 20:09:00 shastry Exp $
+c
+  module disl_parameters
+
+	logical NumericalPK
+	parameter (NumericalPK=.true.)
+	double precision PEIERLS
+	parameter (PEIERLS=0.0d0)
+
+	integer max_disl
+	parameter (max_disl=2000)
+c>ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c>                                                                       
+c> Common blocks                                                         
+c> /arrays_disl/:                                                      
+c>        burgers(3,max_disl) Burgers vectors                          
+c>        burg_length(max_disl) length of the inplane component of     
+c>                               Burgers vectors                       
+c>        theta_e(max_disl) direction of the cut for the edge cmponent 
+c>                           (w.r.t the Burgers vector ( [-P, Pi) )    
+c>        theta_s(max_disl) direction of the cut fot the screw component
+c>                           ( w.r.t the X-axis, any walue )            
+c>        r_disl(3, max_disl) current positions                         
+c>        r_old(3, max_disl) positions at last check for lost disl      
+c>        pk_stress(3, max_disl) stress from acting on a dislocation    
+c>        pk_force(2, max_disl) Peach-Koeller force acting on a         
+c>                               dislocation                            
+c>        pk_f(max_disl)  Peach-Koeller force in the direction of the   
+c>                            Burgers vector                            
+c>        elem_disl(max_disl) the number of an element containing a     
+c>                            dislocation                               
+c>                                                                      
+c> /contrl_disl/:                                                       
+c>        ndisl  number of dislocations                                 
+c>        i_disl flag                                                   
+c>                                                                      
+c>cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c23456789012345678901234567890123456789012345678901234567890123456789012
+c         1         2         3         4         5         6         7
+c
+	integer ndisl, i_disl, ndisl_dd(max_disl)
+	integer elem_disl(max_disl),disl_index(max_disl)
+	double precision burgers(3,max_disl), burg_length(max_disl), 
+     &   theta_e(max_disl), theta_s(max_disl), r_disl(3, max_disl), 
+     &   pk_stress(3, max_disl), pk_force(2, max_disl), pk_f(max_disl),
+     &   disl_range(2,max_disl),r_old(3,max_disl)
+c
+	common /arrays_disl/ burgers, burg_length, theta_e, theta_s, 
+     &                       r_disl,  pk_stress, pk_force, pk_f, 
+     &                       disl_range, r_old, elem_disl, disl_index
+	common /contrl_disl/ ndisl, i_disl, ndisl_dd
+	logical Movedisl1
+        common/kMvdis/MoveDisl1
+
+
+end module disl_parameters
+
+
+c
+c $Log: disl_parameters.par,v $
+c Revision 1.1.1.1  2003/03/12 20:09:00  shastry
+c vijay-   Initial import.
+c
+c Revision 1.4  2002/03/05 03:00:45  shilkrot
+c Moved pk_b out of dislocations.par into the cg common block.
+c
+c Revision 1.3  2002/02/25 20:52:26  shilkrot
+c Added an array burg_length holding the length of the in-plane component of
+c Burgers vectors.
+c
+c Revision 1.2  2001/11/06 23:34:16  shilkrot
+c Added variables to store the P. - K. force and to do c. g.
+c
+c Revision 1.1  2001/07/12 06:30:20  shilkrot
+c The routines used to apply the tilde field and to handle the array of
+c dislocations.
+c

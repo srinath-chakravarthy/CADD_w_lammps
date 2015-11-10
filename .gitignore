@@ -1,0 +1,33 @@
+# ignore any .o and .a files
+*.[oa]
+# ignore any file ending with tilde
+*~
+# ignore all file with kdev
+*kdev*
+# ignore all files under targets dir
+targets/
+build/
+
+# test results
+*.out
+*.vtu
+*.pvd
+*.out.*
+t3d.bmf*
+perf.data*
+*.orig
+*.vtk
+*.cfg
+
+# documentation aux-files.
+*.aux
+*.log
+*.toc
+*.lof
+*.synctex.gz
+*.run.xml
+*.bcf
+*-blx.bib
+*.blg
+
+

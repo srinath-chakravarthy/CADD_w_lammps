@@ -113,6 +113,10 @@
 
 
 !!$        call lammps_open_no_mpi('lmg -log log.CADD', lmp)
+!!$     If replacing this entire subroutine by reading input file
+!!$        delete all lines in this file and replace by a lammps input file
+        
+!!$     call lammps_file(lmp, 'filename')
 
         call lammps_command(lmp, 'units metal')
         call lammps_command(lmp, 'atom_style atomic')

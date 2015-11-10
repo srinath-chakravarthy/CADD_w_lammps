@@ -7,6 +7,7 @@
       USE MOD_TIMMING
       USE LAMMPS
       USE MOD_LAMMPS
+      use mod_file
       IMPLICIT NONE
 !*--GETENERGIESANDFORCES13
 
@@ -19,7 +20,13 @@
       INTEGER iatom , j , i , Ifem
       DOUBLE PRECISION displ_old(3) , displ_new(3)
       DOUBLE PRECISION Straine0
+      integer :: logic
+      character*80 :: filename
 
+      filename = 'out/atom_temp_fem0.cfg'
+      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+      CLOSE (logic)
 
       CALL CPU_TIME(CT2)
       IF ( Solvefem==.TRUE. ) THEN
@@ -27,22 +34,33 @@
          CALL VAFUNCMD(Id,Atomcoord,Ix,F,Avedispl,Atomforce,&
      &                 Systemenergy,Moveatoms,Movedisl,Fullfield,&
      &                 Straine0,Ifem,MOVed)
+         filename = 'out/atom_temp_fem1.cfg'
+         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+         CLOSE (logic)
 
+         
 !!		Get Forces and displacements, specifically on PAD atoms
          DO iatom = 1 , NUMnp
             Atomforce(1:NDF,iatom) = -Atomforce(1:NDF,iatom)
             IF ( ISRelaxed(iatom)==INDexcontinuum .OR. ISRelaxed(iatom) ==INDexpad ) THEN
                Atomdispl(1:NDF,iatom) = Avedispl(1:NDF,iatom)
-               if (isrelaxed(iatom) == INDexpad) then
-                  if (abs(atomcoord(2,iatom)) < 5.0) then
-                     if (atomcoord(1,iatom) < 0) then
-                        write(*, '(A25, I7, 4(1X,E15.8))'),'Pad atom displacement = ', iAtom, &
-                             atomcoord(1:2,iatom), atomdispl(1:2, iatom)
-                     end if
-                  end if
-               end if
+!!$               if (isrelaxed(iatom) == INDexpad) then
+!!$                  if (abs(atomcoord(2,iatom)) < 5.0) then
+!!$                     if (atomcoord(1,iatom) < 0) then
+!!$                        write(*, '(A25, I7, 4(1X,E15.8))'),'Pad atom displacement = ', iAtom, &
+!!$                             atomcoord(1:2,iatom), atomdispl(1:2, iatom)
+!!$                     end if
+!!$                  end if
+!!$               end if
             END IF              
          ENDDO
+
+         filename = 'out/atom_temp_fem2.cfg'
+         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+         CLOSE (logic)
+
          
          !!       Now set atom displacements
          !---- Keeping in mind that FE does not affect these displacements
@@ -286,6 +304,11 @@
          ALLOCATE (AVEvirst(3,3,NUMnp))
          avedispl = 0.0d0
          ! ---- Initialize FEM
+         if (nnsteps == 0) then 
+	    AVEdispl(1:NDF,1:NUMnp) = Atomdispl(1:NDF,1:NUMnp)
+            AVEvirst(1:3,1:3,1:NUMnp) = 0.D0
+
+         end if
          solveFEM = .true.
          ifem = 1
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
@@ -304,15 +327,16 @@
 
          ! --- Initial Lammps Run for zero steps to initialize everything
 !!$         call lammps_command(lmp, "undump 1")
-!!$         write(command_line, fmt='(A18,I4,A30)') "dump 1 all custom ", 1, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
+!!$         write(command_line, fmt='(A18,I4,A55)') "dump 1 all custom ", total_lammps_steps, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
 !!$         call lammps_command(lmp, command_line)
+         
          call lammps_command(lmp, "run 1 pre yes post no")
         !    --Initialize data
-         DO iatom = 1 , NUMnp
-            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN
-               AVEdispl(1:NDF,iatom) = 0.D0
-            ENDIF
-         ENDDO
+!!$         DO iatom = 1 , NUMnp
+!!$            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN
+!!$               AVEdispl(1:NDF,iatom) = 0.D0
+!!$            ENDIF
+!!$         ENDDO
          newmd = .false.
          solveFEM = .false.
          ifem = 0
@@ -461,7 +485,7 @@
 
 !!$            update_all = .true.
 !!$            update_pad = .true. 
-!!$            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
+            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
          ENDDO
          
          mdsteps = mdsteps + fem_call_back_steps

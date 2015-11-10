@@ -134,14 +134,19 @@
         call lammps_command(lmp, "group interface_atoms type 3")
 
         ! ------- EAM potentials
-        call lammps_command(lmp, "pair_style	eam/alloy")
-        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
+        call lammps_command(lmp, "pair_style eam/alloy")
+!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
+        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al")
+
         call lammps_command(lmp, "neighbor 2.0 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity all create 300.0 426789 dist uniform")
-        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 300.0 300.0 100.0")
+        call lammps_command(lmp, "velocity free_atoms create 2.0 426789 dist uniform")
+!!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
+        call lammps_command(lmp, "fix fix_temp free_atoms nve")
+
+        call lammps_command(lmp, "compute com_temp free_atoms temp")
         ! ------------------------------------------------------------------------
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
@@ -151,7 +156,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step f_fix_temp temp pe")
+        call lammps_command(lmp,"thermo_style custom step c_com_temp temp pe vol press")
         
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
@@ -188,7 +193,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 1 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
+        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
         ! ---- Dump is later reset after reading md input file
 
         

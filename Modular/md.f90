@@ -9,6 +9,7 @@
  
       USE MOD_GLOBAL
       USE MOD_TIMMING
+      use mod_file
       IMPLICIT NONE
 !*--GETENERGIESANDFORCES13
  
@@ -21,7 +22,14 @@
       INTEGER iatom , j , i , Ifem
       DOUBLE PRECISION displ_old(3) , displ_new(3)
       DOUBLE PRECISION Straine0
- 
+      integer :: logic
+      character*80 :: filename
+
+      filename = 'out/atom_temp_fem0.cfg'
+      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+      CLOSE (logic)
+
  
       CALL CPU_TIME(CT2)
       IF ( Solvefem==.TRUE. ) THEN
@@ -30,7 +38,13 @@
      &                 Systemenergy,Moveatoms,Movedisl,Fullfield,&
      &                 Straine0,Ifem,MOVed)
  
-!!		Get Forces and displacements, specifically on PAD atoms
+      filename = 'out/atom_temp_fem1.cfg'
+      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+      CLOSE (logic)
+
+      !!		Get Forces and displacements, specifically on PAD atoms
+      
          DO iatom = 1 , NUMnp
             Atomforce(1:NDF,iatom) = -Atomforce(1:NDF,iatom)
             IF ( ISRelaxed(iatom)==INDexcontinuum .OR. ISRelaxed(iatom) ==INDexpad ) THEN
@@ -47,7 +61,12 @@
                end do
             end if
          end do
+      filename = 'out/atom_temp_fem2.cfg'
+      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+      CLOSE (logic)
 
+         
          
 !!	   Zero out forces for fixed nodes
          DO i = 1 , NDF
@@ -262,8 +281,8 @@
  
 !--	output T and Disp for all H atoms
                IF ( MOD(SIMstep,10)==1 ) THEN
-                  IF ( ATOmspecie(iatom)==1 ) THEN
-                     if (AtomID(2,iatom) == 1) then 
+                  IF ( ATOmspecie(iatom)==2 ) THEN
+!!$                     if (AtomID(2,iatom) == 1) then 
                      tatom = GETKINETICTEMP(Atomcoord,Oldvelocity,iatom,&
      &                       Atommass)
                      WRITE (9191,*) Atommass/1.0365*1.0D+28 , tatom , &
@@ -271,7 +290,7 @@
                      WRITE (9192,'(3f16.11,i8)') Atomdispl(1,iatom) , &
      &                      Atomdispl(2,iatom) , Atomdispl(3,iatom) , &
      &                      iatom
-                     endif
+!!$                     endif
  
                   ENDIF
                ENDIF
@@ -1668,7 +1687,12 @@
      &                                fullfield,solvefem,straine0,ifem)
             newmd = .FALSE.
          ENDIF
- 
+         filename = 'out/atom_temp_anewmd.cfg'
+         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+         CLOSE (logic)
+
+         
 !         !!Get Current temperature of the MD region
          currenttemp = GETTEMPERATURE(Atomcoord,isdamped,VELocity,&
      &                 atommass)
@@ -1681,8 +1705,13 @@
      &                       simulationcell,RAMplevel,thermostat,Ix,F,&
      &                       AVEdispl,systemenergy,Moveatoms,Movedisl,&
      &                       fullfield,solvefem,straine0,ifem)
- 
- 
+
+            write(filename,fmt='(A14,I5,A4)') 'out/atom_temp_', istep,'.cfg'
+!!$	    filename = 'out/atom_temp.cfg'
+            CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+            CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+            CLOSE (logic)
+
           !! Restart averaging displacements for MD atoms
          IF ( restartaveraging==.TRUE. ) THEN
             DO iatom = 1 , NUMnp

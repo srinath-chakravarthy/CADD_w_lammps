@@ -79,40 +79,41 @@
  
       lines = 0
       n = 0
- 
       DO islp = i , NSLp
-         DO i = 1 , NDIs(islp)
-            li = LOCphi(islp)
-            cosi = COSphi(li)
-            sini = SINphi(li)
-            sd = SDIs(i,islp)
-            IF ( YENdslp(islp)<0.0D0 ) sd = -sd
-            IF ( B_Dd(i,islp)<0.0D0 ) THEN
-               bsign = -1.0D0
-            ELSE
-               bsign = 1.0D0
-            ENDIF
-            xd = 0.0
-            xd(1,1) = XSLp(islp) + cosi*sd
-            xd(1,2) = YSLp(islp) + sini*sd
-            xd(2,1) = xd(1,1) + bsign*ds*sini
-            xd(2,2) = xd(1,2) - bsign*ds*cosi
-            xd(3,1) = xd(1,1) - cosi*ds
-            xd(3,2) = xd(1,2) - sini*ds
-            xd(4,1) = xd(1,1) + cosi*ds
-            xd(4,2) = xd(1,2) + sini*ds
-            n = n + 1
-            lines(1,1,n) = 2
-            lines(1,2,n) = 4*(n-1) + 1 - 1
-            lines(1,3,n) = 4*(n-1) + 2 - 1
-            lines(2,1,n) = 2
-            lines(2,2,n) = 4*(n-1) + 3 - 1
-            lines(2,3,n) = 4*(n-1) + 4 - 1
-            DO k = 1 , 4
-               WRITE (Logic,FMT='(3(1X,E15.8))') (xd(k,l),l=1,3)
+         if (ndis(islp) > 0) then 
+            DO i = 1 , NDIs(islp)
+               li = LOCphi(islp)
+               cosi = COSphi(li)
+               sini = SINphi(li)
+               sd = SDIs(i,islp)
+               IF ( YENdslp(islp)<0.0D0 ) sd = -sd
+               IF ( B_Dd(i,islp)<0.0D0 ) THEN
+                  bsign = -1.0D0
+               ELSE
+                  bsign = 1.0D0
+               ENDIF
+               xd = 0.0
+               xd(1,1) = XSLp(islp) + cosi*sd
+               xd(1,2) = YSLp(islp) + sini*sd
+               xd(2,1) = xd(1,1) + bsign*ds*sini
+               xd(2,2) = xd(1,2) - bsign*ds*cosi
+               xd(3,1) = xd(1,1) - cosi*ds
+               xd(3,2) = xd(1,2) - sini*ds
+               xd(4,1) = xd(1,1) + cosi*ds
+               xd(4,2) = xd(1,2) + sini*ds
+               n = n + 1
+               lines(1,1,n) = 2
+               lines(1,2,n) = 4*(n-1) + 1 - 1
+               lines(1,3,n) = 4*(n-1) + 2 - 1
+               lines(2,1,n) = 2
+               lines(2,2,n) = 4*(n-1) + 3 - 1
+               lines(2,3,n) = 4*(n-1) + 4 - 1
+               DO k = 1 , 4
+                  WRITE (Logic,FMT='(3(1X,E15.8))') (xd(k,l),l=1,3)
+               ENDDO
+               WRITE (Logic,*)
             ENDDO
-            WRITE (Logic,*)
-         ENDDO
+         end if
       ENDDO
       WRITE (Logic,*)
       WRITE (Logic,FMT='(A5,1X,I7,1X,I7)') 'LINES' , 2*TOT_disl , &

@@ -201,19 +201,19 @@ contains
              lmpatom = lammps_cadd_gmap(iatom)
              rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
              rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-             if (isrelaxed(iatom) /=0 ) then
-                if (isrelaxed(iatom) == -1) then
-                   atom_type = "pad"
-                elseif (isrelaxed(iatom) == 2) then 
-                   atom_type = "inter"
-                else
-                   atom_type = "atom"
-                end if
-             end if
-             if (abs(atomcoord(2,iatom)) < 5.0 .and. atomcoord(1,iatom) < 0) then 
-                write(*, '(A25,A5,2I5, 6(1X,E15.8))'),'Pad atom displacement = ', atom_type, iatom, lmpatom, &
-                     atomcoord(1:2,iatom), atomdispl(1:2, iatom), rcoords(1:2,lmpatom)
-             endif
+!!$             if (isrelaxed(iatom) /=0 ) then
+!!$                if (isrelaxed(iatom) == -1) then
+!!$                   atom_type = "pad"
+!!$                elseif (isrelaxed(iatom) == 2) then 
+!!$                   atom_type = "inter"
+!!$                else
+!!$                   atom_type = "atom"
+!!$                end if
+!!$             end if
+!!$             if (abs(atomcoord(2,iatom)) < 5.0 .and. atomcoord(1,iatom) < 0) then 
+!!$                write(*, '(A25,A5,2I5, 6(1X,E15.8))'),'Pad atom displacement = ', atom_type, iatom, lmpatom, &
+!!$                     atomcoord(1:2,iatom), atomdispl(1:2, iatom), rcoords(1:2,lmpatom)
+!!$             endif
           end if
        end if
     end do

@@ -307,7 +307,8 @@ contains
 
              AtomDispl(1:2,iatom) = compute_lammps_dx(1:2, lmpatom)
              if (isRelaxed(iAtom) == 2) then 
-                AveDispl(1:2, iatom) = compute_lammps_avg_dx(lmpatom)
+                AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
+                AveDispl(1, iatom) = compute_lammps_avg_dy(lmpatom)
              else
                 AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
              end if

@@ -8,7 +8,7 @@ enable_language(CXX)
 set(FORTRAN_SRC_FILES
   lammps.f90)
 set(CPP_SRC_FILES
-  LAMMPS-wrapper.cpp)
+  lammps-wrapper.cpp)
 
 INCLUDE_DIRECTORIES(
   /home/srinath/lammps.git/src

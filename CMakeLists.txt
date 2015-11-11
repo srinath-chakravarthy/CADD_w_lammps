@@ -87,6 +87,7 @@ endmacro()
 include_directories(${CMAKE_BINARY_DIR})
 
 # to add ff flags for a given build type
+add_ff_flags(-fpp)
 add_ff_flags(-fPIC)
 add_ff_flags(-cxxlib)
 #add_ff_flags(-lm)

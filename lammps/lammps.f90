@@ -49,7 +49,8 @@
 module LAMMPS
 
    use, intrinsic :: ISO_C_binding, only : C_double, C_int, C_ptr, C_char, &
-      C_NULL_CHAR, C_loc, C_F_pointer, lammps_instance => C_ptr
+        C_NULL_CHAR, C_loc, C_F_pointer, lammps_instance => C_ptr, C_ASSOCIATED, &
+        C_SIZEOF, C_NULL_PTR
    implicit none
    private
    public :: lammps_open, lammps_open_no_mpi, lammps_close, lammps_file, &
@@ -57,7 +58,7 @@ module LAMMPS
       lammps_extract_atom, lammps_extract_compute, lammps_extract_fix, &
       lammps_extract_variable, lammps_get_natoms, lammps_gather_atoms, &
       lammps_scatter_atoms
-   public :: lammps_instance, C_ptr, C_double, C_int
+   public :: lammps_instance, C_ptr, C_double, C_int, C_NULL_PTR, C_ASSOCIATED, C_SIZEOF
 
    !! Functions supplemental to the prototypes in library.h. {{{1
    !! The function definitions (in C++) are contained in LAMMPS-wrapper.cpp.
@@ -581,6 +582,7 @@ contains !! Wrapper functions local to this module {{{1
          return
       end if
       fix_len = lammps_extract_fix_vectorsize (ptr, id, style)
+      Cptr = lammps_extract_fix_Cptr (ptr, id, style, type,i,j)
       call C_F_pointer (Cptr, fix, (/fix_len/))
       ! Memory is only allocated for "global" fix variables, which we should
       ! never get here, so no need to call lammps_free!

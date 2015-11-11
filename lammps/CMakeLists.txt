@@ -6,7 +6,7 @@ enable_language(CXX)
 
 # list of source files
 set(FORTRAN_SRC_FILES
-  LAMMPS.F90)
+  lammps.f90)
 set(CPP_SRC_FILES
   LAMMPS-wrapper.cpp)
 

@@ -34,19 +34,9 @@ module mod_lammps
 
   real (C_double), dimension(:,:), pointer :: compute_lammps_dx => NULL()
   
-  ! ----- Averaged Displacement Components
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_dx => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_dy => NULL()
 
   
   real (C_double), dimension(:,:), pointer :: compute_lammps_stress => NULL()
-  ! --------- Averaged Stress components -------
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yy => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zz => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xy => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zx => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yz => NULL()
 
   
   
@@ -268,6 +258,20 @@ contains
     DOUBLE PRECISION :: Virst(3,3,*), AveVirst(3,3,*)
     type(c_ptr)::lmp
     ! -----------------------------------
+
+
+    ! ----- Averaged Displacement Components
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_dx => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_dy => NULL()
+
+  ! --------- Averaged Stress components -------
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yy => NULL()
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zz => NULL()
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xy => NULL()
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zx => NULL()
+  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yz => NULL()
+
     
     
     integer :: iatom, i, j, nsize, lmpatom
@@ -281,7 +285,7 @@ contains
     call lammps_extract_fix(compute_lammps_avg_dx, lmp, 'dx_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dy, lmp, 'dy_ave', peratom_style, vector_type, 1, 1)
 
-!!$    print *, 'Size of dx = ', size(compute_lammps_avg_dx), compute_lammps_avg_dx(:)
+    print *, 'Size of dx = ', size(compute_lammps_avg_dx)
     
 !!$    call lammps_extract_compute(compute_lammps_stress, lmp, 'stress', peratom_style, array_type)
 
@@ -302,7 +306,11 @@ contains
              Velocity(1:2,iatom) = lammps_velocity(1:2,lmpatom)
 
              AtomDispl(1:2,iatom) = compute_lammps_dx(1:2, lmpatom)
-             AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
+             if (isRelaxed(iAtom) == 2) then 
+                AveDispl(1:2, iatom) = compute_lammps_avg_dx(lmpatom)
+             else
+                AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
+             end if
 
 !!$             AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
 !!$             AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)

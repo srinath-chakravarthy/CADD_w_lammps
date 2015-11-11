@@ -582,6 +582,7 @@ contains !! Wrapper functions local to this module {{{1
          return
       end if
       fix_len = lammps_extract_fix_vectorsize (ptr, id, style)
+      Cptr = lammps_extract_fix_Cptr (ptr, id, style, type,i,j)
       call C_F_pointer (Cptr, fix, (/fix_len/))
       ! Memory is only allocated for "global" fix variables, which we should
       ! never get here, so no need to call lammps_free!

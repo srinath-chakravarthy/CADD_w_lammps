@@ -135,8 +135,8 @@
 
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
-!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
-        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al")
+        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
+!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al")
 
         call lammps_command(lmp, "neighbor 2.0 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
@@ -193,7 +193,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
+        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] f_dx_ave")
         ! ---- Dump is later reset after reading md input file
 
         

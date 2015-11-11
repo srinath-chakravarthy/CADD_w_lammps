@@ -45,14 +45,14 @@
             Atomforce(1:NDF,iatom) = -Atomforce(1:NDF,iatom)
             IF ( ISRelaxed(iatom)==INDexcontinuum .OR. ISRelaxed(iatom) ==INDexpad ) THEN
                Atomdispl(1:NDF,iatom) = Avedispl(1:NDF,iatom)
-!!$               if (isrelaxed(iatom) == INDexpad) then
-!!$                  if (abs(atomcoord(2,iatom)) < 5.0) then
-!!$                     if (atomcoord(1,iatom) < 0) then
-!!$                        write(*, '(A25, I7, 4(1X,E15.8))'),'Pad atom displacement = ', iAtom, &
-!!$                             atomcoord(1:2,iatom), atomdispl(1:2, iatom)
-!!$                     end if
-!!$                  end if
-!!$               end if
+               if (isrelaxed(iatom) == INDexpad) then
+                  if (abs(atomcoord(2,iatom)) < 5.0) then
+                     if (atomcoord(1,iatom) < 0) then
+                        write(*, '(A25, I7, 4(1X,E15.8))'),'Pad atom displacement = ', iAtom, &
+                             atomcoord(1:2,iatom), atomdispl(1:2, iatom)
+                     end if
+                  end if
+               end if
             END IF              
          ENDDO
 
@@ -485,7 +485,7 @@
 
 !!$            update_all = .true.
 !!$            update_pad = .true. 
-            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
+!!$            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
          ENDDO
          
          mdsteps = mdsteps + fem_call_back_steps

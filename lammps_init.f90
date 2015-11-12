@@ -193,7 +193,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] f_dx_ave")
+        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] f_dx_ave f_dy_ave")
         ! ---- Dump is later reset after reading md input file
 
         

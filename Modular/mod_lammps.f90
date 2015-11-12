@@ -284,20 +284,19 @@ contains
 
     call lammps_extract_fix(compute_lammps_avg_dx, lmp, 'dx_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dy, lmp, 'dy_ave', peratom_style, vector_type, 1, 1)
+   
+    call lammps_extract_compute(compute_lammps_stress, lmp, 'compute_stress', peratom_style, array_type)
 
-    print *, 'Size of dx = ', size(compute_lammps_avg_dx)
-    
-!!$    call lammps_extract_compute(compute_lammps_stress, lmp, 'stress', peratom_style, array_type)
-
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_xx, lmp, 'stress_ave_xx', peratom_style, array_type, 1, 1)
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_yy, lmp, 'stress_ave_yy', peratom_style, array_type, 1, 1)
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_zz, lmp, 'stress_ave_zz', peratom_style, array_type, 1, 1)
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_xy, lmp, 'stress_ave_xy', peratom_style, array_type, 1, 1)
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_zx, lmp, 'stress_ave_zx', peratom_style, array_type, 1, 1)
-!!$    call lammps_extract_fix(compute_lammps_avg_stress_yz, lmp, 'stress_ave_yz', peratom_style, array_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_xx, lmp, 'stress_ave_xx', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_yy, lmp, 'stress_ave_yy', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_zz, lmp, 'stress_ave_zz', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_xy, lmp, 'stress_ave_xy', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_zx, lmp, 'stress_ave_zx', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_stress_yz, lmp, 'stress_ave_yz', peratom_style, vector_type, 1, 1)
 
     do iatom = 1, numnp
        if (isRelaxed(iatom) /= 0) then
+	  AveDispl(1:2, iAtom) = 0.0d0
           if (isRelaxed(iatom) /= -1) then
              lmpatom = lammps_cadd_map(iatom)
              
@@ -306,15 +305,13 @@ contains
              Velocity(1:2,iatom) = lammps_velocity(1:2,lmpatom)
 
              AtomDispl(1:2,iatom) = compute_lammps_dx(1:2, lmpatom)
+             
              if (isRelaxed(iAtom) == 2) then 
                 AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
-                AveDispl(1, iatom) = compute_lammps_avg_dy(lmpatom)
+                AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
              else
                 AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
              end if
-
-!!$             AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
-!!$             AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
 
 !!$             do i = 1, 3
 !!$                do j = 1, 3

@@ -330,7 +330,7 @@
 !!$         write(command_line, fmt='(A18,I4,A55)') "dump 1 all custom ", total_lammps_steps, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
 !!$         call lammps_command(lmp, command_line)
          
-         call lammps_command(lmp, "run 1 pre yes post no")
+         call lammps_command(lmp, "run 100 pre yes post no")
         !    --Initialize data
 !!$         DO iatom = 1 , NUMnp
 !!$            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN

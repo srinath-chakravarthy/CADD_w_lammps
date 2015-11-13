@@ -144,7 +144,8 @@
         ! ---------- Various Fixes ----------------------------------------------
         call lammps_command(lmp, "velocity free_atoms create 2.0 426789 dist uniform")
 !!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
-        call lammps_command(lmp, "fix fix_temp free_atoms nve")
+        call lammps_command(lmp, "fix fix_temp free_atoms temp/berendsen 1.0 1.0 100.0")
+        call lammps_command(lmp, "fix fix_integ free_atoms nve")
 
         call lammps_command(lmp, "compute com_temp free_atoms temp")
         ! ------------------------------------------------------------------------
@@ -193,7 +194,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] f_dx_ave f_dy_ave")
+        call lammps_command(lmp, "dump 1 all custom 1 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2]")
         ! ---- Dump is later reset after reading md input file
 
         

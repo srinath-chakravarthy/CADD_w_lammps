@@ -13,8 +13,12 @@ module mod_lammps
   integer :: n_lammps_atoms
   !< contains map of lammps atom_index to cadd atom index
   !<     lammps_to cadd --> any array x(i) = x_lammps(lammps_cadd_map(i))
+  !< These arrays contain mapping to lammps_extract_atom and extract_fixes etc. 
   integer, dimension(:), allocatable :: lammps_cadd_map, cadd_lammps_map
   integer, dimension(:), allocatable :: lammps_pad_map, pad_lamms_map
+
+  
+  !< Gmap arrays contain mapping to lammps_gather and lammps_scatter 
   integer, dimension(:), allocatable :: lammps_cadd_gmap, cadd_lammps_gmap
   
   !< Main coordinate, force and velocity arrays extracted using extract_atom
@@ -311,6 +315,7 @@ contains
                 AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
              else
                 AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
+
              end if
 
 !!$             do i = 1, 3

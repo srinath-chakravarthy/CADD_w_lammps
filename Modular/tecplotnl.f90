@@ -71,14 +71,15 @@
                                 ! plot of averaged virial stresses
       IF ( key=='atom' ) ikey = 9
                                 ! plot of atoms to be read with atomeye
-!C--Jun Song modifications
-      IF ( key=='pdbf' ) ikey = 10
-                                 ! plot of atoms into pdb file
-!C--Jun Song Mod ends
-      IF ( key=='virH' ) ikey = 11
+      IF ( key=='virH' ) ikey = 10
                                  ! plot the viri stress for H atoms
-      IF ( key=='ovit' ) ikey = 12
-                                 ! Write Cfg file for ovito
+      IF ( key=='ovit' ) ikey = 11
+      ! Write Cfg file for ovito
+
+      
+      IF ( key=='lamp' ) ikey = 12
+      ! Write lammps dump file
+
       IF ( ikey==0 ) THEN
          WRITE (*,*) 'ERROR: unknown key'
          RETURN
@@ -209,23 +210,23 @@
 !*==dump_atom.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
  
  
-      SUBROUTINE DUMP_ATOM(X,B,Logic)
+      SUBROUTINE DUMP_ATOM(X,B,Dr,Logic)
       USE MOD_GLOBAL
       USE MOD_DYNAMO
       IMPLICIT NONE
 !*--DUMP_ATOM216
-      DOUBLE PRECISION X(NXDm,*) , B(NDF,*)
+      DOUBLE PRECISION X(NXDm,*) , B(NDF,*), DR(NDF,*)
       INTEGER Logic , ntot , numpnts
       INTEGER n1 , n2 , n3 , npatoms
  
-      DOUBLE PRECISION dev(6) , xdef , ydef , zdef , hyd , sigeff , y , &
-     &                 epseff
-      INTEGER numtri , i , j , n , ndfmax , ii , jj , nout , npad , &
-     &        startpad
+      DOUBLE PRECISION dev(6) , xdef , ydef , zdef , hyd , sigeff , y ,  epseff
+      INTEGER numtri , i , j , n , ndfmax , ii , jj , nout , npad ,  startpad
       DOUBLE PRECISION dwx1 , dwx2
       DOUBLE PRECISION box_max(2) , box_min(2)
       DOUBLE PRECISION pe , ke
-      INTEGER isurf
+      INTEGER isurf, atom_type
+      
+      character(len=1024) :: outstr
  
       DOUBLE PRECISION :: umag
       CHARACTER tatom*2
@@ -259,47 +260,93 @@
          ENDIF
       ENDDO
       startpad = npatoms - npad + 1
-      PRINT * , 'Start pad atoms = ' , startpad
-      PRINT * , 'Total Potential Energy = ' , pe
-      PRINT * , 'Average Potential Energy = ' , DBLE(pe/npatoms)
+
+      do i = 1, numnp
+         if (isrelaxed(i) == -1) then
+            atom_type = 2
+         else if (isrelaxed(i) == 2) then
+            atom_type = 3
+         else
+            atom_type = 1
+         end if
+
+         if (i == 1) then
+            write(outstr, *) 'ITEM: TIMESTEP'
+            write(logic, *) adjustl(trim(outstr))
+
+            write(logic, '(I1)') 0
+
+            write(outstr, *) 'ITEM: NUMBER OF ATOMS'
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, '(I7)') ntot
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, *) 'ITEM: BOX BOUNDS ss ss pp'
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, '(2F16.9)') box_min(1), box_max(1)
+            write(logic, *) adjustl(trim(outstr))
+            write(outstr, '(2F16.9)') box_min(2), box_max(2)
+            write(logic, *) adjustl(trim(outstr))
+            write(outstr, '(2F16.9)') -0.5, 0.5
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, '(A300)') 'ITEM: ATOMS id type x y z fx fy fz'
+            write(logic, *) adjustl(trim(outstr))
+         end if
+
+         xdef = x(1,i) + b(1,i)
+         ydef = x(2,i) + b(2,i)
+         zdef = x(3,i) + b(3,i)
+         if (isrelaxed(i) /= 0) then 
+            write(outstr,'(I7,1X,I2,1X,6(F16.9))') &
+                 i, atom_type, xdef, ydef, zdef, dr(1,i), dr(2,i), dr(3,i)
+            write(logic, '(A107)') adjustl(trim(outstr))
+         end if
+      end do
+      
+!!$      PRINT * , 'Start pad atoms = ' , startpad
+!!$      PRINT * , 'Total Potential Energy = ' , pe
+!!$      PRINT * , 'Average Potential Energy = ' , DBLE(pe/npatoms)
  
-      DO i = 1 , NUMnp
-         IF ( i==1 ) THEN
-             WRITE (Logic,'(''Number of particles = '',i5)') ntot
-            WRITE (Logic,'(''A = 1.0 Angstrom '')')
-            WRITE (Logic,'(''H0(1,1) = '',f10.4,'' A'')') box_max(1) - box_min(1)
-            WRITE (Logic,'(''H0(1,2) = 0 A'')')
-            WRITE (Logic,'(''H0(1,3) = 0 A'')')
-            WRITE (Logic,'(''H0(2,1) = 0 A'')')
-            WRITE (Logic,'(''H0(2,2) = '',f10.4,'' A'')') box_max(2) - box_min(2)
-            WRITE (Logic,'(''H0(2,3) = 0 A'')')
-            WRITE (Logic,'(''H0(3,1) = 0 A'')')
-            WRITE (Logic,'(''H0(3,2) = 0 A'')')
-            WRITE (Logic,'(''H0(3,3) = '',f10.3,'' A'')') Z_Length
-            
-         ENDIF
-         
- 
-         xdef = (X(1,i)+umag*B(1,i)+box_min(1))/(box_max(1)-box_min(1))
-         ydef = (X(2,i)+umag*B(2,i)+box_max(1))/(box_max(2)-box_min(2))
-         zdef = (X(3,i)+umag*B(3,i))/Z_Length
-
-
-         IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 ) THEN
-            tatom = "Al"
-            mass = 13.0
-         ENDIF
-         IF ( ISRelaxed(i)==-1 ) THEN
-            tatom = "Ni"
-            mass = 14.0
-         ENDIF
-
-         !C           zdef = b(3,i)
-         IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)&
-              &           ==-1 ) WRITE (Logic,'(f4.0,1X,A2, 1X, 6f16.11)') mass ,&
-              &                         tatom , xdef , ydef , zdef , 0.0 , 0.0 , &
-              &                         0.0
-         end DO
+!!$      DO i = 1 , NUMnp
+!!$         IF ( i==1 ) THEN
+!!$             WRITE (Logic,'(''Number of particles = '',i5)') ntot
+!!$            WRITE (Logic,'(''A = 1.0 Angstrom '')')
+!!$            WRITE (Logic,'(''H0(1,1) = '',f10.4,'' A'')') box_max(1) - box_min(1)
+!!$            WRITE (Logic,'(''H0(1,2) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(1,3) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(2,1) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(2,2) = '',f10.4,'' A'')') box_max(2) - box_min(2)
+!!$            WRITE (Logic,'(''H0(2,3) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(3,1) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(3,2) = 0 A'')')
+!!$            WRITE (Logic,'(''H0(3,3) = '',f10.3,'' A'')') Z_Length
+!!$            
+!!$         ENDIF
+!!$         
+!!$ 
+!!$         xdef = (X(1,i)+umag*B(1,i)+box_min(1))/(box_max(1)-box_min(1))
+!!$         ydef = (X(2,i)+umag*B(2,i)+box_max(1))/(box_max(2)-box_min(2))
+!!$         zdef = (X(3,i)+umag*B(3,i))/Z_Length
+!!$
+!!$
+!!$         IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 ) THEN
+!!$            tatom = "Al"
+!!$            mass = 13.0
+!!$         ENDIF
+!!$         IF ( ISRelaxed(i)==-1 ) THEN
+!!$            tatom = "Ni"
+!!$            mass = 14.0
+!!$         ENDIF
+!!$
+!!$         !C           zdef = b(3,i)
+!!$         IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)&
+!!$              &           ==-1 ) WRITE (Logic,'(f4.0,1X,A2, 1X, 6f16.11)') mass ,&
+!!$              &                         tatom , xdef , ydef , zdef , 0.0 , 0.0 , &
+!!$              &                         0.0
+!!$         end DO
 
      END SUBROUTINE DUMP_ATOM
 !*==dumpit.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
@@ -332,13 +379,14 @@
       DOUBLE PRECISION dwx1 , dwx2
       DOUBLE PRECISION box_max(2) , box_min(2)
       DOUBLE PRECISION pe , ke
-      INTEGER isurf
+      INTEGER isurf, atom_type
+      character(len = 1024) outstr
       pe = 0.0
 !
       numtri = NUMel
-      IF ( Key/='atom' .AND. Key/='virH' ) THEN
+      IF ( Key/='atom' .AND. Key/='virH' .AND. Key/='lamp') THEN
          IF ( Key/='viri' .AND. Key/='stra' .AND. Key/='stre' ) THEN
-!$$$            write(logic,'('' TITLE = " '',a4,'' "'')') key
+!!$            write(logic,'('' TITLE = " '',a4,'' "'')') key
          ENDIF
       ENDIF
  
@@ -370,8 +418,7 @@
             amat(2,2) = (X(1,n1)-X(1,n3))/det
             amat(3,2) = (X(1,n2)-X(1,n1))/det
 !           ****compute the green strain time 2*****
-            CALL GETELEMENTSTRAIN(B(1,n1),B(1,n2),B(1,n3),amat(1:3,1:2),&
-     &                            epsloc(1:3,1:3))
+            CALL GETELEMENTSTRAIN(B(1,n1),B(1,n2),B(1,n3),amat(1:3,1:2),epsloc(1:3,1:3))
             epsloc(1:3,1:3) = epsloc(1:3,1:3)*0.5
  
             IF ( Key=='stre' .OR. Key=='viri' ) THEN
@@ -379,7 +426,7 @@
                CALL GETSTRESSES(epsloc,tarray)
             ELSE
                tarray(1:3,1:3) = epsloc(1:3,1:3)
-!***         convert to engineering strains
+!!$         convert to engineering strains
                tarray(2,3) = tarray(2,3) + tarray(3,2)
                tarray(1,3) = tarray(1,3) + tarray(3,1)
                tarray(1,2) = tarray(1,2) + tarray(2,1)
@@ -413,7 +460,7 @@
  
  
 !     find max and min of coordintes so that a box can be made.
-      IF ( Key=='atom' .OR. Key=='ovit' ) THEN
+      IF ( Key=='atom' .OR. Key=='ovit' .or. Key == 'lamp') THEN
          pe = 0.0D0
          DO j = 1 , 2
             box_max(j) = -1.0D30
@@ -423,8 +470,7 @@
          npad = 0
          ntot = 0
          DO i = 1 , NUMnp
-            IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)&
-     &           ==-1 ) THEN
+            IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)==-1 ) THEN
                IF ( ISRelaxed(i)==-1 ) THEN
                   IF ( npad==0 ) startpad = i
                   npad = npad + 1
@@ -434,10 +480,8 @@
                ENDIF
                ntot = ntot + 1
                DO j = 1 , 2
-                  IF ( X(j,i)+Umag*B(j,i)>box_max(j) ) box_max(j)&
-     &                 = X(j,i) + Umag*B(j,i)
-                  IF ( X(j,i)+Umag*B(j,i)<box_min(j) ) box_min(j)&
-     &                 = X(j,i) + Umag*B(j,i)
+                  IF ( X(j,i)+Umag*B(j,i)>box_max(j) ) box_max(j) = X(j,i) + Umag*B(j,i)
+                  IF ( X(j,i)+Umag*B(j,i)<box_min(j) ) box_min(j) = X(j,i) + Umag*B(j,i)
                ENDDO
             ENDIF
          ENDDO
@@ -456,9 +500,7 @@
             dev(2) = Scale*B(2,i)
             IF ( i==1 ) THEN
                WRITE (Logic,'('' VARIABLES = X Y UX UY VX VY AX AY'')')
-               WRITE (Logic,&
-     &'('' ZONE T = "ZONE ONE", I = '',i5,'',J = ''              ,i5,'',&
-     & F = FEPOINT'')') numpnts , numtri
+               WRITE (Logic,'('' ZONE T = "ZONE ONE", I = '',i5,'',J = ''              ,i5,'', F = FEPOINT'')') numpnts , numtri
             ENDIF
             xdef = X(1,i) + Umag*B(1,i)
             ydef = X(2,i) + Umag*B(2,i)
@@ -507,29 +549,26 @@
             ENDIF
             xdef = X(1,i) + Umag*B(1,i)
             ydef = X(2,i) + Umag*B(2,i)
-!C            print*, 'spatial dimension', ndf
+!!$C            print*, 'spatial dimension', ndf
             IF ( NDF>=3 ) zdef = Umag*B(3,i) + X(3,i)
             IF ( NDF==2 ) THEN
                WRITE (Logic,'(4e14.6)') xdef , ydef , dev(1) , dev(2)
             ELSEIF ( NDF==3 ) THEN
-               WRITE (Logic,'(6e14.6)') xdef , ydef , zdef , dev(1) , &
-     &                                  dev(2) , dev(3)
+               WRITE (Logic,'(6e14.6)') xdef , ydef , zdef , dev(1) , dev(2) , dev(3)
             ELSEIF ( NDF==4 ) THEN
-               WRITE (Logic,'(7e14.6)') xdef , ydef , zdef , dev(1) , &
-     &                                  dev(2) , dev(3) , dev(4)
+               WRITE (Logic,'(7e14.6)') xdef , ydef , zdef , dev(1) , dev(2) , dev(3) , dev(4)
             ELSE
-               WRITE (Logic,'(21e14.6)') xdef , ydef , zdef , dev(1) , &
-     &                dev(2) , dev(3) , (B(ii,i),ii=4,MIN(NDF,NDFMAX))
+               WRITE (Logic,'(21e14.6)') xdef , ydef , zdef , dev(1) , dev(2) , dev(3) , (B(ii,i),ii=4,MIN(NDF,NDFMAX))
             ENDIF
          ENDIF
  
          IF ( Key=='bcon' ) THEN
-!     dev(1) = scale*f(1,i)
-!     dev(2) = scale*f(2,i)
-!     if (ndf.ge.3) dev(3) = scale*f(3,i)
-!            dev(1) = scale*dr(1,i)
-!            dev(2) = scale*dr(2,i)
-!            if (ndf.ge.3) dev(3) = scale*dr(3,i)
+!!$     dev(1) = scale*f(1,i)
+!!$     dev(2) = scale*f(2,i)
+!!$     if (ndf.ge.3) dev(3) = scale*f(3,i)
+!!$            dev(1) = scale*dr(1,i)
+!!$            dev(2) = scale*dr(2,i)
+!!$            if (ndf.ge.3) dev(3) = scale*dr(3,i)
             dev(1) = DBLE(Id(1,i))
             dev(2) = DBLE(Id(2,i))
             IF ( NDF>=3 ) dev(3) = DBLE(Id(3,i))
@@ -548,8 +587,7 @@
             IF ( NDF==2 ) THEN
                WRITE (Logic,'(5e14.6)') xdef , ydef , dev(1) , dev(2)
             ELSE
-               WRITE (Logic,'(6e14.6)') xdef , ydef , dev(1) , dev(2) , &
-     &                                  dev(3)
+               WRITE (Logic,'(6e14.6)') xdef , ydef , dev(1) , dev(2) , dev(3)
             ENDIF
          ENDIF
  
@@ -576,15 +614,13 @@
  
                WRITE (Logic,'(''Number of particles = '',i5)') ntot
                WRITE (Logic,'(''A = 1.0 Angstrom '')')
-               WRITE (Logic,'(''H0(1,1) = '',f10.4,'' A'')') box_max(1)&
-     &                - box_min(1)
+               WRITE (Logic,'(''H0(1,1) = '',f10.4,'' A'')') box_max(1) - box_min(1)
 !               write(logic,'(''H0(1,2) = '',f10.4,'' A'')') box_min(2)
                WRITE (Logic,'(''H0(1,2) = 0 A'')')
                WRITE (Logic,'(''H0(1,3) = 0 A'')')
                WRITE (Logic,'(''H0(2,1) = 0 A'')')
 !              write(logic,'(''H0(2,1) = '',f10.4,'' A'')') box_min(1)
-               WRITE (Logic,'(''H0(2,2) = '',f10.4,'' A'')') box_max(2)&
-     &                - box_min(2)
+               WRITE (Logic,'(''H0(2,2) = '',f10.4,'' A'')') box_max(2) - box_min(2)
                WRITE (Logic,'(''H0(2,3) = 0 A'')')
                WRITE (Logic,'(''H0(3,1) = 0 A'')')
                WRITE (Logic,'(''H0(3,2) = 0 A'')')
@@ -600,21 +636,16 @@
                WRITE (Logic,'(''Al '')')
             ENDIF
  
-            xdef = (X(1,i)+Umag*B(1,i)+box_min(1))&
-     &             /(box_max(1)-box_min(1))
-            ydef = (X(2,i)+Umag*B(2,i)+box_max(1))&
-     &             /(box_max(2)-box_min(2))
+            xdef = (X(1,i)+Umag*B(1,i)+box_min(1)) /(box_max(1)-box_min(1))
+            ydef = (X(2,i)+Umag*B(2,i)+box_max(1))/(box_max(2)-box_min(2))
             zdef = (X(3,i)+Umag*B(3,i))/Z_Length
-!C           zdef = b(3,i)
+!!$           zdef = b(3,i)
             IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 ) THEN
                IF ( NUMneighbors(i)==26 ) isurf = 0
-               IF ( (NUMneighbors(i)>22 .AND. NUMneighbors(i)<=26) .OR. &
-     &              NUMneighbors(i)>26 ) isurf = 1
+               IF ( (NUMneighbors(i)>22 .AND. NUMneighbors(i)<=26) .OR. NUMneighbors(i)>26 ) isurf = 1
  
                IF ( NUMneighbors(i)<=22 ) isurf = 2
- 
-               WRITE (Logic,'(4f16.11,1x,2I4)') xdef , ydef , zdef , &
-     &                1.D0*ENErgy(i) , NUMneighbors(i) , isurf
+                WRITE (Logic,'(4f16.11,1x,2I4)') xdef , ydef , zdef ,  1.D0*ENErgy(i) , NUMneighbors(i) , isurf
             ENDIF
  
          ENDIF
@@ -649,42 +680,56 @@
             ENDIF
  
 !C           zdef = b(3,i)
-            IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)&
-     &           ==-1 ) WRITE (Logic,'(f4.0,1X,A2, 1X, 6f16.11)') mass ,&
-     &                         tatom , xdef , ydef , zdef , 0.0 , 0.0 , &
-     &                         0.0
- 
+            IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 .OR. ISRelaxed(i)==-1 ) THEN
+               WRITE (Logic,'(f4.0,1X,A2, 1X, 6f16.11)') mass , tatom , xdef , ydef , zdef , 0.0 , 0.0 , 0.0
+            END IF
          ENDIF
- 
- 
- 
-!C--Jun Song: Modifications: Output pdb file
-         IF ( Key=='pdbf' ) THEN
-!C--current position=origin+disp
-            xdef = X(1,i) + Umag*B(1,i)
-            ydef = X(2,i) + Umag*B(2,i)
-            zdef = X(3,i) + Umag*B(3,i)
-!C--make sure points in simulation cell
-            IF ( (zdef<0.0D0) .OR. (zdef>Z_Length) ) zdef = zdef - &
-     &           Z_Length*FLOOR(zdef/Z_Length)
- 
-            IF ( ISRelaxed(i)==1 .OR. ISRelaxed(i)==2 ) THEN
-               IF ( ATOmspecie(i)==1 ) THEN
-                  WRITE (Logic,'(A,i6,A,i12,f12.3,2f8.3)') "HETATM" , &
-     &                   i , "Ni" , 1 , xdef , ydef , zdef
-               ELSE
-                  WRITE (Logic,'(A,i6,A,i12,f12.3,2f8.3)') "HETATM" , &
-     &                   i , "Al" , 2 , xdef , ydef , zdef
-               ENDIF
-            ENDIF
-!C--JS output pad atoms also
-            IF ( ISRelaxed(i)==-1 )&
-     &            WRITE (Logic,'(A,i6,A,i12,f12.3,2f8.3)') "HETATM" , &
-     &           i , "Fe" , 3 , xdef , ydef , zdef
-!C--output pad ends
-         ENDIF
-!C--Jun Song Comment ends
- 
+
+         if (key == 'lamp') then
+            if (i == 1) then
+               if (isrelaxed(i) == -1) then
+                  atom_type = 1
+               else if (isrelaxed(i) == 2) then
+                  atom_type = 3
+               else
+                  atom_type = 1
+               end if                 
+            end if
+            write(outstr, *) 'ITEM: TIMESTEP'
+            write(logic, *) adjustl(trim(outstr))
+            
+            write(logic, '(I1)') 0
+
+            write(outstr, *) 'ITEM: NUMBER OF ATOMS'
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, '(I7)') ntot
+            write(logic, *) adjustl(trim(outstr))
+
+            write(outstr, *) 'ITEM: BOX BOUNDS ss ss pp'
+            write(logic, *) adjustl(trim(outstr))
+            
+            write(outstr, '(2F16.9)') box_min(1), box_max(1)
+            write(logic, *) adjustl(trim(outstr))
+            write(outstr, '(2F16.9)') box_min(2), box_max(2)
+            write(logic, *) adjustl(trim(outstr))
+            write(outstr, '(2F16.9)') -0.5, 0.5
+            write(logic, *) adjustl(trim(outstr))
+            
+            write(outstr, '(A300)') 'ITEM: ATOMS id type x y z fx fy fz'
+            write(logic, *) adjustl(trim(outstr))
+            xdef = x(1,i) + b(1,i)
+            ydef = x(2,i) + b(2,i)
+            zdef = x(3,i) + b(3,i)
+            if (isrelaxed(i) /= 0) then 
+               write(outstr,'(I7,1X,I2,1X,6(F16.9))') &
+                    i, atom_type, xdef, ydef, zdef, dr(1,i), dr(2,i), dr(3,i)
+               write(logic, '(A107)') adjustl(trim(outstr))
+            end if
+            
+         end if
+         
+  
          IF ( Key=='stra' .OR. Key=='stre' ) THEN
             IF ( i==1 ) THEN
                WRITE (Logic,&

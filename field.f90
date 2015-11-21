@@ -54,7 +54,7 @@
       do i = 1, numnp
          do j = 1, ndf
             if (id(j,i) == 1) then
-               call kfield_displ(1.0d0, x(1,i), btmp, lambda, mu, 0.0)
+               call kfield_displ(1.0d0, x(1,i), btmp, lambda, mu, 0.0d0)
             end if
          end do
          do j = 1, ndf

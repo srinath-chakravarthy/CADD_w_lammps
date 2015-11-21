@@ -23,10 +23,10 @@
       integer :: logic
       character*80 :: filename
 
-      filename = 'out/atom_temp_fem0.cfg'
-      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-      CLOSE (logic)
+!!$      filename = 'out/atom_temp_fem0.cfg'
+!!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+!!$      CLOSE (logic)
 
       CALL CPU_TIME(CT2)
       IF ( Solvefem==.TRUE. ) THEN
@@ -35,9 +35,9 @@
      &                 Systemenergy,Moveatoms,Movedisl,Fullfield,&
      &                 Straine0,Ifem,MOVed)
          filename = 'out/atom_temp_fem1.cfg'
-         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-         CLOSE (logic)
+!!$         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+!!$         CLOSE (logic)
 
          
 !!		Get Forces and displacements, specifically on PAD atoms
@@ -56,10 +56,10 @@
             END IF              
          ENDDO
 
-         filename = 'out/atom_temp_fem2.cfg'
-         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-         CLOSE (logic)
+!!$         filename = 'out/atom_temp_fem2.cfg'
+!!$         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+!!$         CLOSE (logic)
 
          
          !!       Now set atom displacements
@@ -320,17 +320,17 @@
          update_all = .false.
          
          call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
-         filename = 'out/atom.cfg'
-         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-         CLOSE (logic)
+!!$         filename = 'out/atom.cfg'
+!!$         CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+!!$         CLOSE (logic)
 
          ! --- Initial Lammps Run for zero steps to initialize everything
 !!$         call lammps_command(lmp, "undump 1")
 !!$         write(command_line, fmt='(A18,I4,A55)') "dump 1 all custom ", total_lammps_steps, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
 !!$         call lammps_command(lmp, command_line)
          
-         call lammps_command(lmp, "run 100 pre yes post no")
+         call lammps_command(lmp, "run 0 pre yes post no")
         !    --Initialize data
 !!$         DO iatom = 1 , NUMnp
 !!$            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN

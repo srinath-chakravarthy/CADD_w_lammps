@@ -25,10 +25,10 @@
       integer :: logic
       character*80 :: filename
 
-      filename = 'out/atom_temp_fem0.cfg'
-      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-      CLOSE (logic)
+!!$      filename = 'out/atom_temp_fem0.cfg'
+!!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
+!!$      CLOSE (logic)
 
  
       CALL CPU_TIME(CT2)
@@ -38,10 +38,10 @@
      &                 Systemenergy,Moveatoms,Movedisl,Fullfield,&
      &                 Straine0,Ifem,MOVed)
  
-      filename = 'out/atom_temp_fem1.cfg'
-      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-      CLOSE (logic)
+!!$      filename = 'out/atom_temp_fem1.cfg'
+!!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce, logic)
+!!$      CLOSE (logic)
 
       !!		Get Forces and displacements, specifically on PAD atoms
       
@@ -61,10 +61,10 @@
                end do
             end if
          end do
-      filename = 'out/atom_temp_fem2.cfg'
-      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
-      CLOSE (logic)
+!!$      filename = 'out/atom_temp_fem2.cfg'
+!!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+!!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
+!!$      CLOSE (logic)
 
          
          
@@ -902,8 +902,8 @@
       kineticenergy = 0.D0
       weight = 0.D0
       DO k = 1 , NUMneighbors(Iatom)
- 
          jatom = NEIghborlist(k,Iatom)
+         if (jatom == 0 .or. jatom > numnp) cycle
          IF ( ISRelaxed(jatom)/=INDexcontinuum ) THEN
             IF ( ISRelaxed(jatom)/=INDexpad ) THEN
 !
@@ -1689,7 +1689,7 @@
          ENDIF
          filename = 'out/atom_temp_anewmd.cfg'
          CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-         CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+         CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
          CLOSE (logic)
 
          
@@ -1709,7 +1709,7 @@
             write(filename,fmt='(A14,I5,A4)') 'out/atom_temp_', istep,'.cfg'
 !!$	    filename = 'out/atom_temp.cfg'
             CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-            CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+            CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
             CLOSE (logic)
 
           !! Restart averaging displacements for MD atoms
@@ -1776,7 +1776,7 @@
          IF ( dislpass ) THEN
             filename = 'out/atom_pass.cfg'
             CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-            CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+            CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
             CLOSE (logic)
  
             filename = 'out/atom_pass.vtk'
@@ -1867,6 +1867,11 @@
                ENDIF
             ENDIF
          ENDIF
+         write(filename, '(a,i6.6)') 'dump_inter', simstep
+         call iofile(filename,'formatted  ',logic,.false.)
+         call dump_atom(atomcoord, atomdispl, atomforce, logic)
+         close(logic)
+
 !$$$	  if (ndisl > 4) then
 !$$$	     if (mod(iStep,10) .eq. 0) then
 !$$$		filename='out/atom_pass2.cfg'

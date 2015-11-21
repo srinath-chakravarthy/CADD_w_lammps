@@ -10,13 +10,19 @@
 !.....$Modified: Wed Jan 1810:27:091995 by foiles $
       INTEGER NEIMAX
       PARAMETER (NEIMAX=300)
+      
+      !> NEIMAX -> Max number of neighbors
       DOUBLE PRECISION rneigh(NEIMAX) , dneigh(3,NEIMAX)
+      !> rneigh --> distance squared from atom i to neighbor
+      !> dneigh --> Vector from atom i to neighbor
+
       INTEGER jneigh(NEIMAX)
+      !> jneigh ---> atom numbers in neighbor list
+      
       DOUBLE PRECISION , ALLOCATABLE :: rold(:,:) , dis(:,:) , rdyn(:)
-      INTEGER , ALLOCATABLE :: nnindx(:) , nnlst(:,:) , knbr(:) , &
-     &                         neighborlist(:,:) , numneighbors(:)
-      DOUBLE PRECISION perub(3) , perlb(3) , perlen(3) , alat , xbound ,&
-     &                 ybound(2) , zbound(2)
+
+      INTEGER , ALLOCATABLE :: nnindx(:) , nnlst(:,:) , knbr(:) ,  neighborlist(:,:) , numneighbors(:)
+      DOUBLE PRECISION perub(3) , perlb(3) , perlen(3) , alat , xbound ,  ybound(2) , zbound(2)
       LOGICAL onlyoi , twoi , threei , fouri
       INTEGER ngtlst , nneimx , mxlstu , mxnnei , nforce
       DOUBLE PRECISION rctsqn , dradn
@@ -467,6 +473,11 @@
 !--   Vijay
       NUMneighbors(I) = totneighbors
 !     print*, 'Atom: ', i, ' Neighbors: ', NumNeighbors(i)
+!!$      if (ISRelaxed(i) >= 1) then 
+!!$	write(*,fmt='(A6, I7, 1X, 2I5)', advance = "no") 'Atom =', i, ISRelaxed(i), numneighbors(i) 
+!!$	write(*, fmt='(26(1X,I7))') (neighborlist(j,i), j=1,numneighbors(i))
+!!$      end if
+
 !--   Vijay
 !.....
 !.....end of nmeth = 2
@@ -683,6 +694,10 @@
       IF ( THReei .AND. .NOT.FOUri ) nz = 3
       IF ( TWOi .AND. .NOT.THReei ) nz = 2
       IF ( ONLyoi ) nz = 1
+      nz = 1
+      Threei = .false. 
+      TWoi = .false. 
+      Fouri = .false. 
 !
 !     print out the number of images used on the first call only
 !

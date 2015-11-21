@@ -169,11 +169,10 @@
       DOUBLE PRECISION x1(2) , x2(2) , x3(2) , s0(3)
       DOUBLE PRECISION , ALLOCATABLE :: p1(:) , p2(:)
  
-      INTEGER ineigh , idf , idx , i0 , isp1 , isp0 , i , j , k , node ,&
-     &        l , m , ndnn
+      INTEGER  :: ineigh , idf , idx , i0 , isp1 , isp0 , i , j , k , node , l , m , ndnn
  
-      DOUBLE PRECISION rhosum , phisum , r , ef , vol , df , d2f , ph , &
-     &                 dp , d2p , em , dem , d2em , druai , drubj , sed
+      DOUBLE PRECISION :: rhosum , phisum , r , ef , vol , df , d2f , ph 
+      DOUBLE PRECISION :: dp , d2p , em , dem , d2em , druai , drubj , sed
  
       DOUBLE PRECISION force(3)
       COMMON /DEBUGGER/ DEBug

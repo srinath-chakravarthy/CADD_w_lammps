@@ -121,7 +121,7 @@
         call lammps_command(lmp, 'units metal')
         call lammps_command(lmp, 'atom_style atomic')
         call lammps_command(lmp, 'dimension 2')
-        call lammps_command(lmp, 'boundary f f p')
+        call lammps_command(lmp, 'boundary s s p')
         call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
 
         
@@ -142,12 +142,14 @@
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity free_atoms create 2.0 426789 dist uniform")
+        call lammps_command(lmp, "velocity free_atoms create 300.0 426789 dist uniform")
 !!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
         call lammps_command(lmp, "fix fix_temp free_atoms temp/berendsen 1.0 1.0 100.0")
         call lammps_command(lmp, "fix fix_integ free_atoms nve")
 
         call lammps_command(lmp, "compute com_temp free_atoms temp")
+        call lammps_command(lmp, "compute com_pe free_atoms pe/atom")
+        call lammps_command(lmp, "compute pe free_atoms reduce sum c_com_pe")
         ! ------------------------------------------------------------------------
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
@@ -157,7 +159,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_com_temp temp pe vol press")
+        call lammps_command(lmp,"thermo_style custom step c_com_temp temp c_pe pe vol press")
         
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
@@ -194,18 +196,18 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 1 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2]")
+        call lammps_command(lmp, "dump 1 all custom 1 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
         ! ---- Dump is later reset after reading md input file
 
         
         call lammps_command(lmp, "run 0")
-        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all x final ',  &
-             xlo-50.0,  xhi+200.0
+!!$        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all x final ',  &
+!!$             xlo-50.0,  xhi+200.0
 !!$             ' remap units box'
-        call lammps_command(lmp, command_line)
-   
-        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all y final ',  &
-             ylo -200.0, yhi + 200.0
+!!$        call lammps_command(lmp, command_line)
+!!$   
+!!$        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all y final ',  &
+!!$             ylo -200.0, yhi + 200.0
 !!$             ' remap units box'
         call lammps_command(lmp, command_line)
         call lammps_command(lmp, "run 0")        

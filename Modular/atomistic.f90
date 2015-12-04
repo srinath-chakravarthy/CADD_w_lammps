@@ -38,6 +38,7 @@
       INTEGER irep , iel , i , j , inode , idf
       INTEGER logic
       CHARACTER*80 filename
+      character*80 str
       LOGICAL STRessflag
       COMMON /FLAG  / STRessflag
 !
@@ -66,18 +67,24 @@
  
 !      print *, 'Total no. of nodes =', numnp
       DO irep = 1 , NUMnp
-!         NeedList=IsRelaxed(irep).ne.0
-         needlist = ISRelaxed(irep)>=1
+         NeedList=IsRelaxed(irep).ne.0
+!         needlist = ISRelaxed(irep)>=1
          CALL GNEIGH(irep,B,X,needlist)
          IF ( needlist ) THEN
-!
+	    if (irep == 4082) then 
+	      write(*,*) 'Number of neighbors of ', 4082, ' = ', nneips
+	      write(*,'(I6,1X,30I7)') 4082, (jneigh(i), i = 1,nneips) 
+	      write(*,'(I6,1X,30F15.9)') 4082, (Dneigh(3,i), i = 1,nneips) 
+	      write(*,'(I6,1X,30F15.9)') 4082, (rneigh(i), i = 1,nneips) 
+	    end if
 !     NonLocal adds the energy and forces due to the E_i term (energy of
 !     atom i) in the total energy functional.
 !
  
- 
             CALL NONLOCAL(Id,X,Ix,F,B,Dr,Fls,Flw,irep)
- 
+           if (irep == 4082) then 
+	    write(*, '(A25,I5,1X,2(F15.8))') 'Force on atom in nei 1 ', 4082, dr(1:2, 4082)
+	   end if
             IF ( ISRelaxed(irep)==1 ) THEN
                TOTal_energymd = TOTal_energymd + ENErgy(irep)
  
@@ -119,9 +126,15 @@
 !     and is written so that it will be "turned off" if numnpp1=-1,
 !     which is the initial value.
 !
+      write(*, '(A25,I5,1X,2(F15.8))') 'Force on atom in nei 2', 4082, dr(1:2, 4082)
+
       IF ( NUMnpp1<NUMnp ) RETURN
       CALL GNEIGH(NUMnpp1,B,X,.TRUE.)
       CALL NONLOCAL(Id,X,Ix,F,B,Dr,Fls,Flw,NUMnpp1)
+      
+
+      
+      
       END SUBROUTINE PROCESSCLUMP
 !*==processclumpwrapper.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct
  

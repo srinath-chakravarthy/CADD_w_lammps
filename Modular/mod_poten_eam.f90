@@ -250,7 +250,10 @@
                Dr(idf,node) = Dr(idf,node) - force(idf)
             ENDDO
          ENDDO
- 
+	 if (irep == 4082) then 
+	  write(*, '(A25,I5,1X,2(F15.8))') 'Force on atom in nonloc 1', irep, dr(1:2, irep)
+	 end if	
+	
 !     Compute Virial Stress FCC material Only
  
 !CJSTest         vol=(material(1)%a0**3)/4.d0
@@ -272,7 +275,10 @@
          ENDDO
 !
       ENDIF
- 
+ 	 if (irep == 4082) then 
+	  write(*, '(A25,I5,1X,2(F15.8))') 'Force on atom in nonloc 2', irep, dr(1:2, irep)
+	 end if	
+
       IF ( Fls ) DEALLOCATE (p1,p2)
       END SUBROUTINE NONLOCAL
  

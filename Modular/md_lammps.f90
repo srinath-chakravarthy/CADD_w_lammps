@@ -380,6 +380,7 @@
                update_pad = .true.
                update_all = .false. 
                call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
+               call lammps_command(lmp,'run 0 pre yes post no')
 
 
                restartAveraging = .true.

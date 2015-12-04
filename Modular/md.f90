@@ -23,12 +23,16 @@
       DOUBLE PRECISION displ_old(3) , displ_new(3)
       DOUBLE PRECISION Straine0
       integer :: logic
+      integer :: iatom_tmp
       character*80 :: filename
+      iatom_tmp = 4082
 
 !!$      filename = 'out/atom_temp_fem0.cfg'
 !!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
 !!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,atomforce,logic)
 !!$      CLOSE (logic)
+	write(*, '(A25,I5,1X,4(F15.8))') 'Force on atom in GEE ', iatom_tmp, atomforce(1:2, iatom_tmp), & 
+		atomcoord(1:2,iatom_tmp) + atomdispl(1:2,iatom_tmp)
 
  
       CALL CPU_TIME(CT2)
@@ -85,12 +89,17 @@
             Atomforce(1:3,iatom) = 0.D0
          END IF
       ENDDO
+      write(*, '(A25,I5,1X,4(F15.8))') 'Force on atom after FEM ', iatom_tmp, atomforce(1:2, iatom_tmp), & 
+		atomcoord(1:2,iatom_tmp) + atomdispl(1:2,iatom_tmp)
+
 !
 !!	Find forces from EAM
       CALL CPU_TIME(CT2)
       CALL PROCESSCLUMP(Id,Atomcoord,Ix,F,Atomdispl,Atomforce,.TRUE.,.TRUE.)
       CALL CPU_TIME(CT3)
       CT4 = CT4 + CT3 - CT2
+      write(*, '(A25,I5,1X,4(F15.8))') 'Force on atom before md ', iatom_tmp, atomforce(1:2, iatom_tmp), & 
+		atomcoord(1:2,iatom_tmp) + atomdispl(1:2,iatom_tmp)
  
       END SUBROUTINE GETENERGIESANDFORCES
 !*==velocityverlet.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
@@ -191,8 +200,7 @@
       timestephh = TIMestep1/INDextimeh
  
  
-      CALL GETBOXTEMP(Atomcoord,Velocity,Atommass,Simulationcell,&
-     &                tinterior,stadiumtemp,Currenttemp)
+      CALL GETBOXTEMP(Atomcoord,Velocity,Atommass,Simulationcell, tinterior,stadiumtemp,Currenttemp)
  
       selectthermostat = 0
      	!! Check for NoseHoover
@@ -276,20 +284,15 @@
          IF ( ISRelaxed(iatom)/=INDexcontinuum ) THEN
             IF ( ISRelaxed(iatom)/=INDexpad ) THEN
  
-               neighbortemp = GETNEARNEIGHBORTEMP(iatom,Atomcoord,&
-     &                        Atomdispl,Isdamped,Oldvelocity,Atommass)
+               neighbortemp = GETNEARNEIGHBORTEMP(iatom,Atomcoord,Atomdispl,Isdamped,Oldvelocity,Atommass)
  
 !--	output T and Disp for all H atoms
                IF ( MOD(SIMstep,10)==1 ) THEN
                   IF ( ATOmspecie(iatom)==2 ) THEN
 !!$                     if (AtomID(2,iatom) == 1) then 
-                     tatom = GETKINETICTEMP(Atomcoord,Oldvelocity,iatom,&
-     &                       Atommass)
-                     WRITE (9191,*) Atommass/1.0365*1.0D+28 , tatom , &
-     &                              iatom
-                     WRITE (9192,'(3f16.11,i8)') Atomdispl(1,iatom) , &
-     &                      Atomdispl(2,iatom) , Atomdispl(3,iatom) , &
-     &                      iatom
+                     tatom = GETKINETICTEMP(Atomcoord,Oldvelocity,iatom, Atommass)
+                     WRITE (9191,*) Atommass/1.0365*1.0D+28 , tatom , iatom
+                     WRITE (9192,'(3f16.11,i8)') Atomdispl(1,iatom) , Atomdispl(2,iatom) , Atomdispl(3,iatom) , iatom
 !!$                     endif
  
                   ENDIF
@@ -300,8 +303,7 @@
                IF ( Isdamped(iatom)==0 ) THEN   ! Interior atom
                   dampcoeff = 0.D0
                ELSE
-                  tatom = GETKINETICTEMP(Atomcoord,Oldvelocity,iatom,&
-     &                    Atommass)
+                  tatom = GETKINETICTEMP(Atomcoord,Oldvelocity,iatom,Atommass)
  
 !-	Initialize Tdamp to be stadiumTemp at beginning
                   tdamp = stadiumtemp
@@ -324,8 +326,7 @@
                         location = INDEX(damping_mode,'OFF')
                         IF ( location>0 ) tdamp = Requiredtemp
 !-	damp parameter for Marder thermostat
-                        dampcoeff = BERENDSENDAMPCOEFF(Requiredtemp,&
-     &                              tdamp,Langevincoeff,rampvalue)
+                        dampcoeff = BERENDSENDAMPCOEFF(Requiredtemp,tdamp,Langevincoeff,rampvalue)
                      ENDIF
  
                   ENDIF
@@ -347,9 +348,7 @@
 !-	  Repeat for each dimension
                   DO j = 1 , ndf2d
 !-           Intemediate velocity (same as lammps nvt)
-                     Velocity(j,iatom) = Oldvelocity(j,iatom)&
-     &                  *dampfactor(iatom) + dthalf*Atomforce(j,iatom)&
-     &                  /Atommass
+                     Velocity(j,iatom) = Oldvelocity(j,iatom)*dampfactor(iatom) + dthalf*Atomforce(j,iatom)/Atommass
 !-	     update displacement
                      newdispl(j) = Velocity(j,iatom)*Timestep
                   ENDDO
@@ -1412,10 +1411,12 @@
 !
       TYPE (REGION) simulationcell
       TYPE (MD_THERMOSTAT) thermostat
+      INTEGER iatom_tmp
 !
  
 !--	Functions
       INTEGER GETSYSTEMSIZE , FINDMDATOMS
+
       DOUBLE PRECISION GETTEMPERATURE , random , ZBQLU01 , GETRAMP , &
      &                 straine0
       DATA mdsteps/0/
@@ -1867,6 +1868,10 @@
                ENDIF
             ENDIF
          ENDIF
+        iatom_tmp = 4082
+	write(*, '(A25,I5,1X,4(F15.8))') 'Force on atom in md ', iatom_tmp, atomforce(1:2, iatom_tmp), & 
+		atomcoord(1:2,iatom_tmp) + atomdispl(1:2,iatom_tmp)
+
          write(filename, '(a,i6.6)') 'dump_inter', simstep
          call iofile(filename,'formatted  ',logic,.false.)
          call dump_atom(atomcoord, atomdispl, atomforce, logic)

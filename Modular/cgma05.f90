@@ -55,6 +55,7 @@
       ELSE
          CALL INITIALISEENERGY(.TRUE.,.TRUE.,Id,Dr,F)
       ENDIF
+      print *, 'Ending Vafuncmd'
 !
 !     atomistic energy and forces.
 !
@@ -122,7 +123,7 @@
  
 !!$      CALL DOSTEPS(n,B,Dr,Db,ener,tolm,iprint,dsmax,rseed,dfn,Id,X,Ix,F,&
 !!$     &             Itx,.TRUE.,addedslip,lostslip,.TRUE.,.TRUE.)
- 
+!!$ 
       CALL DOSTEPS_lammps(n,B,Dr,Db,ener,tolm,iprint,dsmax,rseed,dfn,Id,X,Ix,F,&
      &             Itx,.TRUE.,addedslip,lostslip,.TRUE.,.TRUE.,lmp)
  

@@ -162,8 +162,7 @@
       LOGICAL :: movemesh , moved
 !     Current Crack tip position and other crack tip related parameters
       DOUBLE PRECISION :: xtip(2) , xtip_old(2) , xtip_init(2)
-      DOUBLE PRECISION :: xtip_actual(2) , x_tip_dir(2) , &
-     &                    crack_motion(2)
+      DOUBLE PRECISION :: xtip_actual(2) , x_tip_dir(2) , crack_motion(2)
 !     -----End Hack -SC
 !     Since the xtip is located in the atomistic region and is always an
 !     atom

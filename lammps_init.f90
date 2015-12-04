@@ -26,8 +26,8 @@
         integer :: atomType
 
         integer :: i, j, k, l, natoms, npad, n
-        zmin = -0.5
-        zmax = 0.5
+        zmin = 0.0d0
+        zmax = 2.9573845299d0
 
         open(unit=1010, file='cadd_atoms.dat', status='UNKNOWN')
         natoms = 0
@@ -120,8 +120,8 @@
 
         call lammps_command(lmp, 'units metal')
         call lammps_command(lmp, 'atom_style atomic')
-        call lammps_command(lmp, 'dimension 2')
-        call lammps_command(lmp, 'boundary s s p')
+        call lammps_command(lmp, 'dimension 3')
+        call lammps_command(lmp, 'boundary ss ss pp')
         call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
 
         
@@ -142,10 +142,11 @@
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity free_atoms create 300.0 426789 dist uniform")
-!!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
-        call lammps_command(lmp, "fix fix_temp free_atoms temp/berendsen 1.0 1.0 100.0")
-        call lammps_command(lmp, "fix fix_integ free_atoms nve")
+        call lammps_command(lmp, "velocity free_atoms create 2.0 426789 dist uniform")
+
+        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
+!!$        call lammps_command(lmp, "fix fix_temp free_atoms temp/berendsen 1.0 1.0 100.0")
+!!$        call lammps_command(lmp, "fix fix_integ free_atoms nve")
 
         call lammps_command(lmp, "compute com_temp free_atoms temp")
         call lammps_command(lmp, "compute com_pe free_atoms pe/atom")
@@ -154,7 +155,8 @@
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
         call lammps_command(lmp, "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0")
-        call lammps_command(lmp, "fix fix_2d all enforce2d")
+        !call lammps_command(lmp, "fix fix_2d all enforce2d")
+        call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
         
 
         ! ------------- Various computes -------------------------------

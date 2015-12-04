@@ -195,6 +195,7 @@ contains
              lmpatom = lammps_cadd_gmap(iatom)
              rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
              rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+             rcoords(3,lmpatom) = 0.0d0
 !!$             if (isrelaxed(iatom) /=0 ) then
 !!$                if (isrelaxed(iatom) == -1) then
 !!$                   atom_type = "pad"
@@ -212,7 +213,7 @@ contains
        end if
     end do
     do iatom = 1, natoms
-       do j = 1,2
+       do j = 1,3
           r((iatom-1)*3 + j) = rcoords(j,iatom)
        end do
     end do

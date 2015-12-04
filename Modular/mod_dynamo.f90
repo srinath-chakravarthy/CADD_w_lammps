@@ -694,10 +694,10 @@
       IF ( THReei .AND. .NOT.FOUri ) nz = 3
       IF ( TWOi .AND. .NOT.THReei ) nz = 2
       IF ( ONLyoi ) nz = 1
-      nz = 1
-      Threei = .false. 
-      TWoi = .false. 
-      Fouri = .false. 
+!!$      nz = 1
+!!$      Threei = .false. 
+!!$      TWoi = .false. 
+!!$      Fouri = .false. 
 !
 !     print out the number of images used on the first call only
 !

@@ -302,11 +302,13 @@
       IF ( newmd ) THEN
          SIMstep = 0
          ALLOCATE (AVEvirst(3,3,NUMnp))
+         ALLOCATE (virst(3,3,NUMnp))
          avedispl = 0.0d0
          ! ---- Initialize FEM
          if (nnsteps == 0) then 
 	    AVEdispl(1:NDF,1:NUMnp) = Atomdispl(1:NDF,1:NUMnp)
             AVEvirst(1:3,1:3,1:NUMnp) = 0.D0
+            virst(1:3,1:3,1:NUMnp) = 0.D0
 
          end if
          solveFEM = .true.
@@ -316,7 +318,7 @@
      &                                systemenergy,Moveatoms,Movedisl,&
      &                                fullfield,solvefem,straine0,ifem)
 
-         update_pad = .true.
+!         update_pad = .true.
          update_all = .false.
          
          call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
@@ -377,7 +379,7 @@
      &                                AVEdispl,Atomforce,atommass,&
      &                                systemenergy,Moveatoms,Movedisl,&
      &                                fullfield,solvefem,straine0,ifem)
-               update_pad = .true.
+!               update_pad = .true.
                update_all = .false. 
                call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
                call lammps_command(lmp,'run 0 pre yes post no')
@@ -410,7 +412,7 @@
             IF ( dislpass ) THEN
                filename = 'out/atom_pass.cfg'
                CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-               CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
+               CALL DUMP_ATOM(Atomcoord,Atomdispl,AtomForce,logic)
                CLOSE (logic)
 
                filename = 'out/atom_pass.vtk'
@@ -484,9 +486,11 @@
 !!$            end if
 
 
-!!$            update_all = .true.
-!!$            update_pad = .true. 
-!!$            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
+			!CHECK THAT THIS IS WORKING
+			!Check the update to the B array inside dislocation 
+            update_all = .true.
+!            update_pad = .true. 
+            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
          ENDDO
          
          mdsteps = mdsteps + fem_call_back_steps

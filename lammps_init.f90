@@ -23,26 +23,56 @@
         DIMENSION Id(NDF,1) , X(NXDm,1) , Ix(NEN1,1) , F(NDF,1) , B(NDF,1)
         double precision, intent(in) :: xmin, xmax, ymin, ymax
         double precision :: zmin, zmax
+        double precision :: atom1_xmin, atom1_xmax, atom1_ymin, atom1_ymax
+!!        double precision :: stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
         integer :: atomType
 
         integer :: i, j, k, l, natoms, npad, n
+        
+        
+        stadium_width = 20.0d0
+
         zmin = 0.0d0
         zmax = 2.9573845299d0
 
         open(unit=1010, file='cadd_atoms.dat', status='UNKNOWN')
         natoms = 0
+        atom1_xmin = 1.0d20
+        atom1_xmax = -1.0d20
+        atom1_ymin = 1.0d20
+        atom1_ymax = -1.0d20
+        
         do i = 1, numnp
            if (isRelaxed(i) /= 0) then
               natoms = natoms + 1
+              if (isRelaxed(i) /= -1) then 
+		if (X(1,i) < atom1_xmin) then 
+		  atom1_xmin = X(1,i)
+		end if
+		if (X(2,i) < atom1_ymin) then 
+		  atom1_ymin = X(2,i)
+		end if
+		if (X(1,i) > atom1_xmax) then 
+		  atom1_xmax = X(1,i)
+		end if
+		if (X(2,i) > atom1_ymax) then 
+		  atom1_ymax = X(2,i)
+		end if
+              end if
            end if
            if (isRelaxed(i) == -1) then
               npad = npad + 1
            end if
         end do
+        stadium_xmax = atom1_xmax
+        stadium_xmin = atom1_xmin
+        stadium_ymin = atom1_ymin
+        stadium_ymax = atom1_ymax
+        
         write(1010,*) "CADD input atoms"
         write(1010,*)
         write(1010, fmt='(I7,1X,A10)')  natoms, 'atoms'
-        write(1010, fmt='(I3,1X,A15)')  3, 'atom types'
+        write(1010, fmt='(I3,1X,A15)')  4, 'atom types'
         write(1010, fmt='(2(1X,F15.8),1X,A15)')  xmin, xmax, 'xlo xhi '
         write(1010, fmt='(2(1X,F15.8),1X,A15)')  ymin, ymax, 'ylo yhi '
         write(1010, fmt='(2(1X,F15.8),1X,A15)')  zmin, zmax, 'zlo zhi '
@@ -58,7 +88,15 @@
               elseif (isRelaxed(i) == 2) then
                  atomType = 3
               else
-                 atomType = 1
+		 if (X(1,i) < atom1_xmax - stadium_width .and. X(1,i) > atom1_xmin+stadium_width) then 
+		  if (X(2,i) < atom1_ymax - stadium_width .and. X(2,i) > atom1_xmin+stadium_width) then 
+		    atomType = 4
+		  else 
+		    atomType = 1
+		  end if
+		 else 
+		  atomType = 1
+		 end if
               end if
               write(1010,fmt='(I7,1X,I3,1X,3(1X,F15.8))') n, atomType, X(1,i), X(2,i), 0.0
            end if
@@ -128,25 +166,37 @@
         call lammps_command(lmp, 'read_data cadd_atoms.dat')
 
         ! --- Create groups of atoms for fixes and computes ----
-        call lammps_command(lmp, "group md_atoms type 1")
-        call lammps_command(lmp, "group free_atoms type 1 3")
+        call lammps_command(lmp, "group md_atoms type 1 3 4")
+        call lammps_command(lmp, "group free_atoms type 1")
         call lammps_command(lmp, "group pad_atoms type 2")
         call lammps_command(lmp, "group interface_atoms type 3")
+        call lammps_command(lmp, "group langevin_atoms type 3 4")
 
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
-        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
-!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al")
+!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
+        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al Al")
 
-        call lammps_command(lmp, "neighbor 2.0 bin ")
+        call lammps_command(lmp, "neighbor 0.1 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity free_atoms create 2.0 426789 dist uniform")
+        call lammps_command(lmp, "velocity md_atoms create 2.0 426789 dist uniform")
+        call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
 
-        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
-!!$        call lammps_command(lmp, "fix fix_temp free_atoms temp/berendsen 1.0 1.0 100.0")
-!!$        call lammps_command(lmp, "fix fix_integ free_atoms nve")
+        
+!!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
+
+        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 1000.0 699693 stadium -36.801272 76.433412 -39.225645 39.225645 20.000000")
+!!$        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699693 scale 3 1.2")
+
+!!$	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 1000.0 699693")
+!!$	write(command_line, fmt='(A71,5(1X,F15.6))') "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+
+!!$	call lammps_command(lmp, command_line)
+!!$	call lammpms_command(lmp,  "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium yes stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width")
+        call lammps_command(lmp, "fix fix_integ md_atoms nve")
+!!$        call lammps_command(lmp, "fix fix_integ2 langevin_atoms nve")
 
         call lammps_command(lmp, "compute com_temp free_atoms temp")
         call lammps_command(lmp, "compute com_pe free_atoms pe/atom")
@@ -198,7 +248,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 1 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
+        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
         ! ---- Dump is later reset after reading md input file
 
         

@@ -64,7 +64,7 @@
       INTEGER logic
       CHARACTER*80 filename
 !c--JS: dwfactor 2 for asym and 1 for sym
-      dwfactorx = 2
+      dwfactorx = 1
       dwfactory = 1
 !c
       WRITE (*,*)

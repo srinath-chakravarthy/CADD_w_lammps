@@ -20,7 +20,7 @@
 !<    nsys   --> Current number of slip systems (default = 3)
 !<    nslp   --> Current number of slip planes
       DOUBLE PRECISION :: dtime_dd , TNUC , tincr , TINCR_SAV
-      PARAMETER (TNUC=1.D-9)
+      PARAMETER (TNUC=1.D-10)
       PARAMETER (TINCR_SAV=1.D-11)
 !<    tincr ---> DD timer (default = 1.d-11)
 !<    tnuc --->  Nucleation timer (default = 1.d-9).

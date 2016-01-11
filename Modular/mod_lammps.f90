@@ -182,20 +182,40 @@ contains
     natoms = size(r)/3
     allocate(rcoords(3,natoms))
     rcoords = reshape(r,shape(rcoords))
+
     do iatom = 1, numnp
-       if (isRelaxed(iatom) /= 0) then
-          if (update_all) then
-             update_def = (isrelaxed(iAtom) /= 0) 
-          else
-             update_def = (isrelaxed(iAtom)==-1)
-          end if
-       end if
-       if (isRelaxed(iatom) /=0) then 
-          if (update_def) then 
-             lmpatom = lammps_cadd_gmap(iatom)
-             rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-             rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-             rcoords(3,lmpatom) = 0.0d0
+		if (update_all) then
+			update_def = (isrelaxed(iAtom) /= 0) 
+	    else
+			update_def = (isrelaxed(iAtom) == -1)
+		end if
+	   
+!	    if (update_pad) then
+!			update_def = (isrelaxed(iAtom) == -1)
+!	    end if
+		
+	    if (update_def) then 
+			lmpatom = lammps_cadd_gmap(iatom)
+			rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+			rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+	    end if
+    end do	
+	
+	
+!    do iatom = 1, numnp
+!       if (isRelaxed(iatom) /= 0) then
+!          if (update_all) then
+!             update_def = (isrelaxed(iAtom) /= 0) 
+!          else
+!             update_def = (isrelaxed(iAtom)==-1)
+!          end if
+!       end if
+!       if (isRelaxed(iatom) /=0) then 
+!          if (update_def) then 
+!             lmpatom = lammps_cadd_gmap(iatom)
+!             rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+!             rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+!             rcoords(3,lmpatom) = 0.0d0
 !!$             if (isrelaxed(iatom) /=0 ) then
 !!$                if (isrelaxed(iatom) == -1) then
 !!$                   atom_type = "pad"
@@ -209,9 +229,10 @@ contains
 !!$                write(*, '(A25,A5,2I5, 6(1X,E15.8))'),'Pad atom displacement = ', atom_type, iatom, lmpatom, &
 !!$                     atomcoord(1:2,iatom), atomdispl(1:2, iatom), rcoords(1:2,lmpatom)
 !!$             endif
-          end if
-       end if
-    end do
+!          end if
+!       end if
+!    end do
+
     do iatom = 1, natoms
        do j = 1,3
           r((iatom-1)*3 + j) = rcoords(j,iatom)
@@ -301,7 +322,7 @@ contains
 
     do iatom = 1, numnp
        if (isRelaxed(iatom) /= 0) then
-	  AveDispl(1:2, iAtom) = 0.0d0
+	        AveDispl(1:2, iAtom) = 0.0d0
           if (isRelaxed(iatom) /= -1) then
              lmpatom = lammps_cadd_map(iatom)
              
@@ -319,28 +340,40 @@ contains
 
              end if
 
-!!$             do i = 1, 3
-!!$                do j = 1, 3
-!!$                   if (i == j) then 
-!!$                      Virst(i, i, iAtom) = compute_lammps_stress(i, lmpatom)
-!!$                   else
-!!$                      Virst(i,j, iAtom) = compute_lammps_stress(i+j+1, lmpatom)
-!!$                   end if
-!!$                end do
-!!$             end do
-!!$             AveVirst(1,1,iAtom) = compute_lammps_avg_stress_xx(lmpatom)
-!!$             AveVirst(2,2,iAtom) = compute_lammps_avg_stress_yy(lmpatom)
-!!$             AveVirst(3,3,iAtom) = compute_lammps_avg_stress_zz(lmpatom)
-!!$             AveVirst(1,2,iAtom) = compute_lammps_avg_stress_xy(lmpatom)
-!!$             AveVirst(1,3,iAtom) = compute_lammps_avg_stress_zx(lmpatom)
-!!$             AveVirst(2,3,iAtom) = compute_lammps_avg_stress_yz(lmpatom)
+!!$             value exists accessible as such
+!!$             print*,'compute_lammps_avg_stress_xx of lmpatom 1', compute_lammps_avg_stress_xx(1)
+
+!             print*,'compute_lammps_stress of (1,lmpatom)', compute_lammps_stress(1, lmpatom)
+!             print*,'iAtom before crash: ', iAtom
+!             Virst(1,1,iAtom) = compute_lammps_stress(1, lmpatom)
+!             print*,'Virst of lmpatom', Virst(1,1,iAtom)
+
+             do i = 1, 3
+                do j = 1, 3
+                   if (i == j) then 
+                      Virst(i, i, iAtom) = compute_lammps_stress(i, lmpatom)
+                   else
+                      Virst(i, j, iAtom) = compute_lammps_stress(i+j+1, lmpatom)
+                   end if
+                end do
+             end do
+
+             AveVirst(1,1,iAtom) = compute_lammps_avg_stress_xx(lmpatom)
+!!$             print*,'compute_lammps_avg_stress_xx of lmpatom', compute_lammps_avg_stress_xx(lmpatom)
+!!$             print*,'AveVirst of lmp atom', AveVirst(1,1,iAtom)
+             AveVirst(2,2,iAtom) = compute_lammps_avg_stress_yy(lmpatom)
+             AveVirst(3,3,iAtom) = compute_lammps_avg_stress_zz(lmpatom)
+             AveVirst(1,2,iAtom) = compute_lammps_avg_stress_xy(lmpatom)
+             AveVirst(1,3,iAtom) = compute_lammps_avg_stress_zx(lmpatom)
+             AveVirst(2,3,iAtom) = compute_lammps_avg_stress_yz(lmpatom)
 !!$             ! ---- Symmetric Stress Tensor
-!!$             AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
-!!$             AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
-!!$             AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
+             AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
+             AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
+             AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
           end if
        end if
     end do
+
 !!$    AveVirst(:,:,:) = Virst(:,:,:)
 
   end subroutine update_from_lammps

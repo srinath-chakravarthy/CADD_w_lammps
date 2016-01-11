@@ -182,6 +182,9 @@
  
 !     Template method not used here .... need implementation
  
+!     Stadium Langevin parameters
+      double precision :: stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+ 
  
       CONTAINS
  

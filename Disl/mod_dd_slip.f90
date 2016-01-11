@@ -1480,58 +1480,54 @@
          CALL RANMAR(rand,2)
  
   !        Hard code one source on +60 slip plane a little distacnce   a
-!$$$         if (locphi(islp) .ne. 3) then
-!$$$            if (xslp(islp) > 5.d0*blen-1.d0 .and.
-!$$$     $           xslp(islp) < 5.d0*blen+1.d0) then
-!$$$                  if (yend > 0.0d0) then
-!$$$                     if (yendslp(islp) > 0.0d0) then
-!$$$                        if (locphi(islp) == 1) then
-!$$$                           dlengthslp = lnuc + 100.0d0 + rand(1)*lnu
-!$$$                        else
-!$$$                           dlengthslp = 2.d0*lnuc + 100.0d0 + rand(1
-!$$$     $                          *lnuc
-!$$$                        end if
-!$$$                     else
-!$$$                        dlengthslp = 4.d0*lnuc + 100.0d0 + rand(1)*l
-!$$$                     end if
-!$$$                     if (locphi(islp) == 1) then
-!$$$                        if (yendslp(islp) < 0.0d0) then
-!$$$                           cycle
-!$$$                        end if
-!$$$                     end if
-!$$$                     k = 1
-!$$$                     nnuc(islp) = k
-!$$$                     t_FR(k,islp) = avg_source_str
-!$$$                     xLnuc(k,islp) = lnuc
-!$$$                     ii = ii + 1
-!$$$                     snuc(k,islp) = dlengthslp
-!$$$                     if (yend > 0) then
-!$$$                        rnuc(1,k,islp) = xstart + dlengthslp*cphi
-!$$$                        rnuc(2,k,islp) = ystart + dlengthslp*sphi
-!$$$                        rnuc(3,k,islp) = 0.0
-!$$$                     else
-!$$$                        if (locphi(islp) ==1) then
-!$$$                           rnuc(1,k,islp) = xstart - dlengthslp*cphi
-!$$$                        else
-!$$$                           rnuc(1,k,islp) = xstart+abs(dlengthslp*cp
-!$$$                        endif
-!$$$                        rnuc(2,k,islp) = -(ystart + dlengthslp*sphi)
-!$$$                        rnuc(3,k,islp) = 0.0
-!$$$                     endif
-!$$$                     elem_source(k,islp) = fe_locate(rnuc(:,k,islp),
-!$$$                     write( *,fmt='(A10,1X,3(1x,E15.7))') 'Coords ar
-!$$$     $                    snuc(k,islp),rnuc(1,k,islp), rnuc(2,k,islp
-!$$$                     print *, 'Located in Element ', elem_source(k,i
-!$$$                     print *, 'Islp = ', islp, locphi(islp), cphi, s
-!$$$c$$$                     exit
-!$$$                  endif
-!$$$            else
-!$$$               goto 10
-!$$$            endif
-!$$$         else
-!$$$            goto 10
-!$$$         endif
- 
+         if (locphi(islp) .ne. 3) then
+            if (xslp(islp) > 5.d0*blen-1.d0 .and.  xslp(islp) < 5.d0*blen+1.d0) then
+                  if (yend > 0.0d0) then
+                     if (yendslp(islp) > 0.0d0) then
+                        if (locphi(islp) == 1) then
+                           dlengthslp = lnuc + 100.0d0 + rand(1)*lnuc
+                        else
+                           dlengthslp = 2.d0*lnuc + 100.0d0 + rand(1)*lnuc
+                        end if
+                     else
+                        dlengthslp = 4.d0*lnuc + 100.0d0 + rand(1)*lnuc
+                     end if
+                     if (locphi(islp) == 1) then
+                        if (yendslp(islp) < 0.0d0) then
+                           cycle
+                        end if
+                     end if
+                     k = 1
+                     nnuc(islp) = k
+                     t_FR(k,islp) = avg_source_str
+                     xLnuc(k,islp) = lnuc
+                     ii = ii + 1
+                     snuc(k,islp) = dlengthslp
+                     if (yend > 0) then
+                        rnuc(1,k,islp) = xstart + dlengthslp*cphi
+                        rnuc(2,k,islp) = ystart + dlengthslp*sphi
+                        rnuc(3,k,islp) = 0.0
+                     else
+                        if (locphi(islp) ==1) then
+                           rnuc(1,k,islp) = xstart - dlengthslp*cphi
+                        else
+                           rnuc(1,k,islp) = xstart+abs(dlengthslp*cphi)
+                        endif
+                        rnuc(2,k,islp) = -(ystart + dlengthslp*sphi)
+                        rnuc(3,k,islp) = 0.0
+                     endif
+                     elem_source(k,islp) = fe_locate(rnuc(:,k,islp),1)                     
+                     write( *,fmt='(A10,1X,3(1x,E15.7))') 'Coords are', snuc(k,islp),rnuc(1,k,islp), rnuc(2,k,islp)
+                     print *, 'Located in Element ', elem_source(k,islp)
+                     print *, 'Islp = ', islp, locphi(islp), cphi, sphi
+!!$                     exit
+                  endif
+            else
+               cycle
+            endif
+         else
+            cycle
+         endif
  
 !$$$!     Generate source randomly from gaussian distribution
 !$$$

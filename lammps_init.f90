@@ -88,15 +88,12 @@
               elseif (isRelaxed(i) == 2) then
                  atomType = 3
               else
-		 if (X(1,i) < atom1_xmax - stadium_width .and. X(1,i) > atom1_xmin+stadium_width) then 
-		  if (X(2,i) < atom1_ymax - stadium_width .and. X(2,i) > atom1_xmin+stadium_width) then 
+		 if (X(1,i) > atom1_xmax - stadium_width .or. X(1,i) < atom1_xmin+stadium_width & 
+		    .or. X(2,i) > atom1_ymax - stadium_width .or. X(2,i) < atom1_ymin+stadium_width) then 
 		    atomType = 4
 		  else 
 		    atomType = 1
 		  end if
-		 else 
-		  atomType = 1
-		 end if
               end if
               write(1010,fmt='(I7,1X,I3,1X,3(1X,F15.8))') n, atomType, X(1,i), X(2,i), 0.0
            end if
@@ -181,24 +178,31 @@
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity md_atoms create 2.0 426789 dist uniform")
+        call lammps_command(lmp, "velocity md_atoms create 30.0 426789 dist uniform")
         call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
 
         
 !!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
 
-        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 1000.0 699693 stadium -36.801272 76.433412 -39.225645 39.225645 20.000000")
-!!$        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699693 scale 3 1.2")
 
 !!$	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 1000.0 699693")
 !!$	write(command_line, fmt='(A71,5(1X,F15.6))') "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
 
 !!$	call lammps_command(lmp, command_line)
 !!$	call lammpms_command(lmp,  "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium yes stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width")
-        call lammps_command(lmp, "fix fix_integ md_atoms nve")
+
+!!$        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699693")
+!!$        call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+  
+	call lammps_command(lmp, "fix fix_integ md_atoms nve")
+	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 0.01 699693 stadium -76.4334117 76.4334117 -78.45129 78.45129 20.000000")
+
+
 !!$        call lammps_command(lmp, "fix fix_integ2 langevin_atoms nve")
 
+        
         call lammps_command(lmp, "compute com_temp free_atoms temp")
+        call lammps_command(lmp, "compute stadium_temp langevin_atoms temp")
         call lammps_command(lmp, "compute com_pe free_atoms pe/atom")
         call lammps_command(lmp, "compute pe free_atoms reduce sum c_com_pe")
         ! ------------------------------------------------------------------------
@@ -211,7 +215,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_com_temp temp c_pe pe vol press")
+        call lammps_command(lmp,"thermo_style custom step temp pe c_com_temp c_pe c_stadium_temp")
         
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
@@ -248,7 +252,7 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
+        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
         ! ---- Dump is later reset after reading md input file
 
         

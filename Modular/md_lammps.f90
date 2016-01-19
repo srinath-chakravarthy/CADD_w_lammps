@@ -231,7 +231,7 @@
 !C--doing temperature rescaling
 !C--Reading neighborlist update parameter
       OPEN (UNIT=200,FILE='md.inp',STATUS='old')
-      READ (200,*) damped_width
+      READ (200,*) damped_width, exclude_top, exclude_bot, exclude_left, exclude_right
       READ (200,*) langevincoeff , LVScaleratio
       READ (200,*) lcnhdampcoeff
       READ (200,*) requiredtemp

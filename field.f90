@@ -83,49 +83,76 @@
       INTEGER lower , upper , NEXT , idum
       DOUBLE PRECISION dflag , kinit
       DOUBLE PRECISION btmp(NDF) , temp , btmp1(NDF)
-!     c
+      
+!!$   Pulse parameters
+      double precision :: a0, A, sigma, rc, delr, uc, r
       lower = 4
       upper = NEXT(lower,Input)
       CALL FREEIN(Input,lower,upper,idum,kinit,2)
       lower = upper
       upper = NEXT(lower,Input)
       CALL FREEIN(Input,lower,upper,idum,dflag,2)
-!     c
-!     c
- 
       PRINT * , 'Time in precrack is' , TIMe , kinit , dflag
-      CALL FINDAVERAGEELASTICCONST(lambda,mu)
-      DO i = 1 , NUMnp
-!CC   --JS Hack for H atoms
-         yhshift = 0.0D0
-         IF ( (ATOmspecie(i)==2) .AND. (X(1,i)<0.1) ) THEN
-            IF ( (X(2,i)>-0.2) .AND. (X(2,i)<0.2) ) yhshift = 0.1D0
-            IF ( (X(2,i)>1.0) .AND. (X(2,i)<2.0) ) yhshift = -0.1D0
-         ENDIF
-!CC   --END
-         IF ( dflag==0.0 ) THEN
-            TIMe = kinit
-            CALL KFIELD_DISPL(kinit,X(1,i),btmp,lambda,mu,yhshift)
-            B(1,i) = btmp(1)
-            B(2,i) = btmp(2)
-            IF ( Id(1,i)==1 ) F(1,i) = B(1,i)/TIMe
-            IF ( Id(2,i)==1 ) F(2,i) = B(2,i)/TIMe
-            IF ( Id(1,i)==1 .OR. Id(2,i)==1 ) THEN
-!     print *, 'K_Field in prec', i, f(1,i), f(2,i), x(1,i), x(2,i)
-            ENDIF
-         ELSE
-            CALL KFIELD_DISPL(kinit,X(1,i),btmp1,lambda,mu,yhshift)
-            temp = kinit + dflag
-            CALL KFIELD_DISPL(temp,X(1,i),btmp,lambda,mu,yhshift)
-            B(1,i) = B(1,i) - btmp1(1) + btmp(1)
-            B(2,i) = B(2,i) - btmp1(2) + btmp(2)
-            IF ( Id(1,i)==1 ) F(1,i) = B(1,i)/(TIMe)
-            IF ( Id(2,i)==1 ) F(2,i) = B(2,i)/(TIMe)
-         ENDIF
- 
-      ENDDO
- 
+
+!!$!     c
+!!$!     c
+!!$!     Hard coded pulse for stadium langevin
+
+      a0 = 2.8309
+      A = 0.603
+      sigma = 5.0*a0/sqrt(2.0)
+      rc = 10.0*a0;
+
+      do i = 1, numnp
+         if (isrelaxed(i) /=0) then
+            if (isrelaxed(i) /= -1) then
+               r = sqrt(X(1,i)**2 + X(2,i)**2)
+               if (r < rc) then
+                  uc = A*exp(-(rc/sigma)**2)
+                  delr = A*(A*exp(-(r/sigma)**2)-uc)/(A-uc)
+                  b(1,i) = b(1,i) + delr
+                  b(2,i) = b(2,i) + delr
+               end if 
+            end if
+         end if
+      end do
+      
 !     c
+!!$
+!!$
+!!$      CALL FINDAVERAGEELASTICCONST(lambda,mu)
+!!$      DO i = 1 , NUMnp
+!!$!CC   --JS Hack for H atoms
+!!$         yhshift = 0.0D0
+!!$         IF ( (ATOmspecie(i)==2) .AND. (X(1,i)<0.1) ) THEN
+!!$            IF ( (X(2,i)>-0.2) .AND. (X(2,i)<0.2) ) yhshift = 0.1D0
+!!$            IF ( (X(2,i)>1.0) .AND. (X(2,i)<2.0) ) yhshift = -0.1D0
+!!$         ENDIF
+!!$!CC   --END
+!!$         IF ( dflag==0.0 ) THEN
+!!$            TIMe = kinit
+!!$            CALL KFIELD_DISPL(kinit,X(1,i),btmp,lambda,mu,yhshift)
+!!$            B(1,i) = btmp(1)
+!!$            B(2,i) = btmp(2)
+!!$            IF ( Id(1,i)==1 ) F(1,i) = B(1,i)/TIMe
+!!$            IF ( Id(2,i)==1 ) F(2,i) = B(2,i)/TIMe
+!!$            IF ( Id(1,i)==1 .OR. Id(2,i)==1 ) THEN
+!!$!     print *, 'K_Field in prec', i, f(1,i), f(2,i), x(1,i), x(2,i)
+!!$            ENDIF
+!!$         ELSE
+!!$            CALL KFIELD_DISPL(kinit,X(1,i),btmp1,lambda,mu,yhshift)
+!!$            temp = kinit + dflag
+!!$            CALL KFIELD_DISPL(temp,X(1,i),btmp,lambda,mu,yhshift)
+!!$            B(1,i) = B(1,i) - btmp1(1) + btmp(1)
+!!$            B(2,i) = B(2,i) - btmp1(2) + btmp(2)
+!!$            IF ( Id(1,i)==1 ) F(1,i) = B(1,i)/(TIMe)
+!!$            IF ( Id(2,i)==1 ) F(2,i) = B(2,i)/(TIMe)
+!!$         ENDIF
+!!$ 
+!!$      ENDDO
+!!$ 
+
+      !     c
       END SUBROUTINE PRECRACK
 !*==pdelcalc.spg  processed by SPAG 6.70Rc at 12:37 on 29 Oct 2015
  

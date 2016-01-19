@@ -24,14 +24,61 @@
         double precision, intent(in) :: xmin, xmax, ymin, ymax
         double precision :: zmin, zmax
         double precision :: atom1_xmin, atom1_xmax, atom1_ymin, atom1_ymax
-!!        double precision :: stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+        integer :: nsteps
         integer :: atomType
+        logical :: top, bot, left, right, itop, ibot, ileft, iright
 
         integer :: i, j, k, l, natoms, npad, n
         
+	OPEN (UNIT=200,FILE='md.inp',STATUS='old')
+	READ (200,*) stadium_width, exclude_top, exclude_bot, exclude_left, exclude_right
+	READ (200,*) damp_coeff , damp_ratio
+	READ (200,*) nh_dampcoeff
+	READ (200,*) lammps_temperature
+	READ (200,*) TIMestep1
+	READ (200,*) INDextimeh
+	READ (200,*) fem_update_steps
+	READ (200,*) nsteps
+        CLOSE (200)
+        top = .true.
+        bot = .true.
+        left = .true.
+        right = .true. 
         
-        stadium_width = 20.0d0
+        if (exclude_top > 0) then
+           top = .false.
+        end if
 
+        if (exclude_bot > 0) then
+           bot = .false.
+        end if
+
+        if (exclude_left > 0) then
+           left = .false.
+        end if
+
+        if (exclude_right > 0) then
+           right = .false.
+        end if
+
+        
+	!!!! --- Assume units metal in lammps
+	lammps_timestep = TIMestep1/1.0d-12
+	tstart = lammps_temperature
+	tstop = lammps_temperature
+	
+	!!! TODO add exclusion zones for stadium thermostat such as top surface, bottom surface, left, right
+	!!! --- mainly for impact problem
+	
+	if (damp_coeff > 0.0) then 
+	  damp_coeff = 1.0/(damp_coeff)
+	! TODO error handler 
+	end if
+	!!! Once again assuming metal units in lammps
+	damp_coeff = damp_coeff / 1.0d-12
+	lammps_output_steps = nsteps
+        
+        !! TODO get zmin and zmax from mat file automatically
         zmin = 0.0d0
         zmax = 2.9573845299d0
 
@@ -88,8 +135,13 @@
               elseif (isRelaxed(i) == 2) then
                  atomType = 3
               else
-		 if (X(1,i) > atom1_xmax - stadium_width .or. X(1,i) < atom1_xmin+stadium_width & 
-		    .or. X(2,i) > atom1_ymax - stadium_width .or. X(2,i) < atom1_ymin+stadium_width) then 
+                 itop = (x(2,i) > atom1_ymax - stadium_width)
+                 ibot = (x(2,i) < atom1_ymin + stadium_width)
+                 ileft = (x(1,i) < atom1_xmin + stadium_width)
+                 iright = (x(1,i) > atom1_xmax - stadium_width)
+                 if ((itop .and. top) .or. (ibot .and. bot) .or. (ileft .and. left) .or. (iright .and. right)) then 
+!!$		 if (X(1,i) > atom1_xmax - stadium_width .or. X(1,i) < atom1_xmin+stadium_width & 
+!!$		    .or. X(2,i) > atom1_ymax - stadium_width .or. X(2,i) < atom1_ymin+stadium_width) then 
 		    atomType = 4
 		  else 
 		    atomType = 1
@@ -178,33 +230,55 @@
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
-        call lammps_command(lmp, "velocity md_atoms create 30.0 426789 dist uniform")
+        write(command_line,*) "variable mytemp equal", lammps_temperature
+        call lammps_command(lmp, command_line)
+        !!$call lammps_command(lmp, "variable mytemp equal 500.0")
+        call lammps_command(lmp, "velocity md_atoms create $(2.0*v_mytemp) 426789 dist uniform")
         call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
 
-        
+	! ---- Temperature fixes -----------------------------------------------------------
+	
 !!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
 
 
-!!$	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 1000.0 699693")
-!!$	write(command_line, fmt='(A71,5(1X,F15.6))') "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
-
-!!$	call lammps_command(lmp, command_line)
-!!$	call lammpms_command(lmp,  "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699483 stadium yes stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width")
-
-!!$        call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 100.0 699693")
-!!$        call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
   
 	call lammps_command(lmp, "fix fix_integ md_atoms nve")
-	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin 1.0 1.0 0.01 699693 stadium -76.4334117 76.4334117 -78.45129 78.45129 20.000000")
+!!$	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin $(v_mytemp) $(v_mytemp) 0.01 699693 stadium -76.4334117 76.4334117 -78.45129 78.45129 20.000000 tally yes zero yes")
+	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+	call lammps_command(lmp, command_line)
 
+	! ----------------------------------------------------------------------------------
 
-!!$        call lammps_command(lmp, "fix fix_integ2 langevin_atoms nve")
-
+	! ---- Temperature Computes and temperature variance for testing  -------------------------------------
+	! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+        call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
+        call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
+        !   --- Variables for actual temperature 
+        call lammps_command(lmp, "variable free_tempv equal c_free_temp")
+        call lammps_command(lmp, "variable stadium_tempv equal c_stadium_temp")
+        ! ---- Canonical Temperature variation 
+        call lammps_command(lmp, "variable nfree_atoms equal count(free_atoms)")
+        call lammps_command(lmp, "variable nstadium_atoms equal count(langevin_atoms)")
         
-        call lammps_command(lmp, "compute com_temp free_atoms temp")
-        call lammps_command(lmp, "compute stadium_temp langevin_atoms temp")
+        call lammps_command(lmp, "variable canonical_free equal $((v_mytemp^2)/v_nfree_atoms)")
+        call lammps_command(lmp, "variable canonical_stadium equal $((v_mytemp^2)/v_nstadium_atoms)")
+        call lammps_command(lmp, "variable delt_free equal (c_free_temp-v_mytemp)^2")
+        call lammps_command(lmp, "variable delt_stadium equal (c_stadium_temp-v_mytemp)^2")
+        
+        ! ---- average the variance of the temperature 
+!!$        call lammps_command(lmp, "fix free_variance free_atoms ave/time 1 1000 1000 v_delt_free ave running")
+!!$        call lammps_command(lmp, "fix stadium_variance free_atoms ave/time 1 1000 1000 v_delt_stadium ave running")
+
+!!$        call lammps_command(lmp, 'fix print_variance all print 1000 "Temperature Variance =  &
+!!$	   $(f_free_variance) $(f_stadium_variance) $(f_free_variance/v_canonical_free) $(f_stadium_variance/v_canonical_stadium)"')
+        
+        
+        ! ------------ Energies -------------------------
         call lammps_command(lmp, "compute com_pe free_atoms pe/atom")
         call lammps_command(lmp, "compute pe free_atoms reduce sum c_com_pe")
+        call lammps_command(lmp, "compute ke free_atoms ke")
+        call lammps_command(lmp, "variable tot_energy equal c_pe+c_ke")
         ! ------------------------------------------------------------------------
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
@@ -215,22 +289,25 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step temp pe c_com_temp c_pe c_stadium_temp")
+        call lammps_command(lmp,"thermo_style custom step c_free_temp c_pe c_stadium_temp v_tot_energy")
         
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
 
         call lammps_command(lmp, "compute dx_all all displace/atom")
-        
 
         ! ---- Compute used for average displacement of interface atoms  -----
         call lammps_command(lmp, "compute dx_inter interface_atoms displace/atom")
 
         
         ! ----- Now define a fix to actually calculate the average for interface atoms
-        call lammps_command(lmp, "fix dx_ave interface_atoms ave/atom 1 25 25 c_dx_inter[1]")
-        call lammps_command(lmp, "fix dy_ave interface_atoms ave/atom 1 25 25 c_dx_inter[2]")
-        !!$call lammps_command(lmp, "fix dz_ave interface_atoms ave/atom 1 25 25 c_dx_inter[3]")
+        write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[1]"
+        call lammps_command(lmp, command_line)
+!!$        call lammps_command(lmp, "fix dx_ave interface_atoms ave/atom 1 25 25 c_dx_inter[1]")
+        write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[2]"
+        call lammps_command(lmp, command_line)
+!!$        call lammps_command(lmp, "fix dy_ave interface_atoms ave/atom 1 25 25 c_dx_inter[2]")
+!!$        call lammps_command(lmp, "fix dz_ave interface_atoms ave/atom 1 25 25 c_dx_inter[3]")
 
 
         ! ---- Compute used for virial stress on atoms
@@ -252,23 +329,11 @@
 
 
         ! ---- Dump data file 
-        call lammps_command(lmp, "dump 1 all custom 25 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")
-        ! ---- Dump is later reset after reading md input file
-
+        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz c_dx_all[4]"
+        call lammps_command(lmp, command_line)
+!!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         
         call lammps_command(lmp, "run 0")
-!!$        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all x final ',  &
-!!$             xlo-50.0,  xhi+200.0
-!!$             ' remap units box'
-!!$        call lammps_command(lmp, command_line)
-!!$   
-!!$        write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all y final ',  &
-!!$             ylo -200.0, yhi + 200.0
-!!$             ' remap units box'
-        call lammps_command(lmp, command_line)
-        call lammps_command(lmp, "run 0")        
-!!$
-!!$        
-!!$        call lammps_close(lmp)
+        stop
         
       end subroutine initialize_lammps

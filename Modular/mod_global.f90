@@ -184,6 +184,11 @@
  
 !     Stadium Langevin parameters
       double precision :: stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+!     Other MD parameters, currently local to md.f90 
+      double precision :: damp_coeff, lammps_temperature, nh_dampcoeff, damp_ratio, lammps_timestep
+      integer :: fem_update_steps, lammps_output_steps, num_md_steps
+      double precision :: tstart, tstop
+      integer :: exclude_top, exclude_bot, exclude_right, exclude_left
  
  
       CONTAINS

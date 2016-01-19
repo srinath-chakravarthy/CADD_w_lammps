@@ -334,6 +334,8 @@
 !---- macro 'prec'
 !---- initializes the displacement to the K-field
             CALL PRECRACK(Id,X,B,F,ct(2,l))
+            call update_lammps_coords(X, B, .true., .true., lmp)
+            call lammps_command(lmp, "run 0 pre yes post no")
             GOTO 500
          CASE (24)
 !

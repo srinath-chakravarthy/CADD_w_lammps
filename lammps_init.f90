@@ -334,6 +334,5 @@
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         
         call lammps_command(lmp, "run 0")
-        stop
-        
+       
       end subroutine initialize_lammps

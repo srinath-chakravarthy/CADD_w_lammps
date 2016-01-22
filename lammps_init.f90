@@ -78,10 +78,12 @@
 	damp_coeff = damp_coeff / 1.0d-12
 	lammps_output_steps = nsteps
         
+        
         !! TODO get zmin and zmax from mat file automatically
-        zmin = 0.0d0
-        zmax = 2.9573845299d0
-
+        !!! --- For now assume single grain to be modified for multiple grains
+	zmin = 0.0d0
+	zmax = grains(1)%dcell(3)
+        
         open(unit=1010, file='cadd_atoms.dat', status='UNKNOWN')
         natoms = 0
         atom1_xmin = 1.0d20
@@ -147,7 +149,7 @@
 		    atomType = 1
 		  end if
               end if
-              write(1010,fmt='(I7,1X,I3,1X,3(1X,F15.8))') n, atomType, X(1,i), X(2,i), 0.0
+              write(1010,fmt='(I7,1X,I3,1X,3(1X,F15.8))') n, atomType, X(1,i), X(2,i), X(3,i)
            end if
         end do
         write(1010,*)
@@ -234,16 +236,22 @@
         call lammps_command(lmp, command_line)
         !!$call lammps_command(lmp, "variable mytemp equal 500.0")
         call lammps_command(lmp, "velocity md_atoms create $(2.0*v_mytemp) 426789 dist uniform")
-        call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
+        if (nmaterials == 1) then 
+	  if (material(1)%structure == 'hex') then 
+	  ! ---- Set Z-velocity to zero for 2d hex problem
+	    call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
+	  end if
+	end if
+	    
+	  
 
 	! ---- Temperature fixes -----------------------------------------------------------
 	
 !!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
 
 
-  
+	! --- Todo put in langevin in the input file to say that there is a stadium ....
 	call lammps_command(lmp, "fix fix_integ md_atoms nve")
-!!$	call lammps_command(lmp, "fix fix_temp langevin_atoms langevin $(v_mytemp) $(v_mytemp) 0.01 699693 stadium -76.4334117 76.4334117 -78.45129 78.45129 20.000000 tally yes zero yes")
 	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
 	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
 	call lammps_command(lmp, command_line)
@@ -251,9 +259,16 @@
 	! ----------------------------------------------------------------------------------
 
 	! ---- Temperature Computes and temperature variance for testing  -------------------------------------
-	! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
-        call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
-        call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
+	if (nmaterials == 1) then 
+	  if (material(1)%structure == 'hex') then 
+	    ! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+	    call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
+	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
+	  else 
+	    call lammps_command(lmp, "compute free_temp free_atoms temp")
+	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp")	  
+	  end if 
+	end if
         !   --- Variables for actual temperature 
         call lammps_command(lmp, "variable free_tempv equal c_free_temp")
         call lammps_command(lmp, "variable stadium_tempv equal c_stadium_temp")
@@ -284,7 +299,11 @@
         !---- Pad atoms always have zero force so this is fixed here to 0 
         call lammps_command(lmp, "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0")
         !call lammps_command(lmp, "fix fix_2d all enforce2d")
-        call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+        if (nmaterials == 1) then 
+	  if (material(1)%structure == 'hex') then 
+	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+	  end if 
+	end if
         
 
         ! ------------- Various computes -------------------------------

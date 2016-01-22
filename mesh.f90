@@ -763,12 +763,12 @@
  
       WRITE (6,*) 'width of the detection band: rcutmesh = ' , rcutmesh
  
-      CALL GEN_SLIP_PLANES(simulationcell%XMIN,simulationcell%xmax,&
-     &                     simulationcell%YMIN,simulationcell%ymax,&
-     &                     atomregion%XMIN,atomregion%xmax,&
-     &                     atomregion%YMIN,atomregion%ymax,slip_angle,&
-     &                     GRAins(1)%DCELL(1),xslip_start,yslip_start,&
-     &                     dxslip,dyslip,PAD_width)
+!       CALL GEN_SLIP_PLANES(simulationcell%XMIN,simulationcell%xmax,&
+!      &                     simulationcell%YMIN,simulationcell%ymax,&
+!      &                     atomregion%XMIN,atomregion%xmax,&
+!      &                     atomregion%YMIN,atomregion%ymax,slip_angle,&
+!      &                     GRAins(1)%DCELL(1),xslip_start,yslip_start,&
+!      &                     dxslip,dyslip,PAD_width)
  
       X_Move_mesh = 5.D0*dxslip
       MOVemesh = .FALSE.

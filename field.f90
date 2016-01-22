@@ -98,8 +98,8 @@
 !!$!     c
 !!$!     Hard coded pulse for stadium langevin
 
-      a0 = 2.8309
-      A = 0.603
+      a0 = 4.032
+      A = 0.86
       sigma = 5.0*a0/sqrt(2.0)
       rc = 10.0*a0;
 

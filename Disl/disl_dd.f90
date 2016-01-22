@@ -14,8 +14,8 @@
 !
       IF ( I_Disl==0 ) THEN
          I_Disl = 1
-         CALL GEN_SOURCES
-         CALL GEN_OBSTACLES
+!          CALL GEN_SOURCES
+!          CALL GEN_OBSTACLES
 !!$         CALL PLOT_SLIP
 !$$$  stop
 !     call gen_slip_planes

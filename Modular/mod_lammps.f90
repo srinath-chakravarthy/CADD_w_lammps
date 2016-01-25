@@ -9,7 +9,7 @@ module mod_lammps
   integer, parameter :: global_data_style = 0, peratom_style = 1, local_data_style = 2
   integer, parameter :: scalar_type = 0, vector_type = 1, array_type = 2
 
-  
+  integer :: kind4int
   integer :: n_lammps_atoms
   !< contains map of lammps atom_index to cadd atom index
   !<     lammps_to cadd --> any array x(i) = x_lammps(lammps_cadd_map(i))
@@ -66,13 +66,6 @@ contains
 
     
     tol = 1.e-5
-
-    ! Initialize the arrays
-    
-    cadd_lammps_map = 0
-    lammps_cadd_map = 0
-
-    
     
 
     if (C_ASSOCIATED(lmp)) then
@@ -84,6 +77,14 @@ contains
        n_lammps_atoms = size(lammps_coord,2)
        allocate(cadd_lammps_map(n_lammps_atoms))
        allocate(lammps_cadd_map(numnp))
+       
+       ! Initialize the arrays to large, known, negative value for error checking
+       ! default integer is of kind4, max value of 2147483647...so use intrisic function
+       ! huge of a kind4 integer (value doesn't 
+       kind4int = 0;
+       cadd_lammps_map = -HUGE(kind4int)
+       lammps_cadd_map = -HUGE(kind4int)
+       
 !!$       print *, 'Size of arrays = ', size(cadd_lammps_map), size(lammps_cadd_map)
 !!$
 !!$       print *, 'Number of Lammps Atoms = ', n_lammps_atoms
@@ -110,8 +111,12 @@ contains
     allocate(rcoords(3,nsize))
     rcoords = reshape(r,shape(rcoords))
 
+    ! Allocate and initialize arrays
     allocate(lammps_cadd_gmap(numnp))
     allocate(cadd_lammps_gmap(nsize))
+    
+    cadd_lammps_gmap = -HUGE(kind4int)
+    lammps_cadd_gmap = -HUGE(kind4int)
 
     print *, nsize, n_lammps_atoms
     
@@ -159,6 +164,7 @@ contains
     integer :: iatom, catom, lmpatom, j
     double precision, dimension(:), allocatable :: r
     double precision, dimension(:,:), allocatable :: rcoords
+    double precision, dimension(:), allocatable :: types
 
     real (C_double), pointer :: xlo => NULL()
     real (C_double), pointer :: xhi => NULL()
@@ -176,12 +182,40 @@ contains
 
     print *, 'Lammps box size = ', xlo, xhi, ylo, yhi
 
-
     
     call lammps_gather_atoms(lmp,'x',3, r)
     natoms = size(r)/3
     allocate(rcoords(3,natoms))
     rcoords = reshape(r,shape(rcoords))
+
+
+    !print*,'before type gather'
+
+    ! --- collecting the types of each atom in lammps
+    ! --- so we can ignore the indenter atoms
+    !call lammps_gather_atoms(lmp,'type',1,types)
+
+   ! print*,'printing out types'
+
+    !do iatom = 1,natoms
+    !  print*,'atom ',iatom,' type ', types(iatom)
+    !  print*,'atom ',iatom,' xpos ', rcoords(1,iatom)
+    !enddo
+
+    print*,'--------lammps_cadd_gmap--------'
+    print*,'size lammps_cadd_gmap', size(lammps_cadd_gmap)
+
+    !do iatom = 1, numnp
+    !   print*,'lmp_atom', lammps_cadd_gmap(iatom)
+    !end do
+
+    print*,'--------lammps_cadd_map--------'
+    print*,'size lammps_cadd_map', size(lammps_cadd_map)
+    
+    !do iatom = 1, numnp
+    !   print*,'lmp_atom', lammps_cadd_map(iatom)
+    !end do
+
 
     do iatom = 1, numnp
 		if (update_all) then
@@ -195,9 +229,12 @@ contains
 !	    end if
 		
 	    if (update_def) then 
-			lmpatom = lammps_cadd_gmap(iatom)
-			rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-			rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+			   lmpatom = lammps_cadd_gmap(iatom)
+!         print*,'lmpatom update_def', lmpatom
+         !if (lmpatom >= 1 .AND. lmpatom <= natoms) then
+			      rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+			      rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+         !end if
 	    end if
     end do	
 	
@@ -324,7 +361,11 @@ contains
        if (isRelaxed(iatom) /= 0) then
 	        AveDispl(1:2, iAtom) = 0.0d0
           if (isRelaxed(iatom) /= -1) then
+
              lmpatom = lammps_cadd_map(iatom)
+			 
+             !print*,'lmpatom update_cadd', lmpatom
+             !if (lmpatom >= 1 .AND. lmpatom <= nsize) then
              
              Atomforce(1:2,iatom) = lammps_force(1:2,lmpatom)
              
@@ -370,6 +411,8 @@ contains
              AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
              AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
              AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
+
+             !end if
           end if
        end if
     end do

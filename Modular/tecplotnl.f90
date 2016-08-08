@@ -42,7 +42,7 @@
       CHARACTER*6 cnt
       LOGICAL Flag
 !c--JS: update icount entries if adding new ikey
-      INTEGER , SAVE :: icount(12) = 0 , nprint
+      INTEGER , SAVE :: icount(13) = 0 , nprint
       INTEGER i , lower , upper , NEXT , ikey , j , logic , index , idum
       DOUBLE PRECISION dum , scale , umag
 !
@@ -79,6 +79,8 @@
       
       IF ( key=='lamp' ) ikey = 12
       ! Write lammps dump file
+
+      IF ( key=='olmp' ) ikey = 13
 
       IF ( ikey==0 ) THEN
          WRITE (*,*) 'ERROR: unknown key'
@@ -460,7 +462,7 @@
  
  
 !     find max and min of coordintes so that a box can be made.
-      IF ( Key=='atom' .OR. Key=='ovit' .or. Key == 'lamp') THEN
+      IF ( Key=='atom' .OR. Key=='ovit' .or. Key == 'lamp' .or. Key == 'olmp') THEN
          pe = 0.0D0
          DO j = 1 , 2
             box_max(j) = -1.0D30
@@ -728,6 +730,45 @@
             end if
             
          end if
+
+        if (key.eq.'olmp') then
+
+          if (i.eq.1) then
+
+            write(logic,'(''ITEM: TIMESTEP'')')
+            write(logic,'(i1)') 0
+            write(logic,'(''ITEM: NUMBER OF ATOMS'')')
+            write(logic,'(i5)') ntot
+            write(logic,'(''ITEM: BOX BOUNDS pp pp pp'')')
+            write(logic,'(f10.4,'' '',f10.4)') 0.0,& 
+     &            box_max(1)-box_min(1)
+            write(logic,'(f10.4,'' '',f10.4)') 0.0,& 
+     &            box_max(2)-box_min(2)
+            write(logic,'(f10.4,'' '',f10.4)') -z_length/2, z_length/2
+            write(logic,'(''ITEM: ATOMS type x y z'')')
+          end if 
+
+
+          xdef =(x(1,i)+umag*b(1,i)-box_min(1))
+          ydef =(x(2,i)+umag*b(2,i)-box_min(2))
+          zdef = (x(3,i) + umag*b(3,i))
+          if (IsRelaxed(i) == 1) then 
+            TAtom = "1"
+          end if
+          if (IsRelaxed(i) == 2) then 
+            TAtom = "2"
+          end if
+          if (IsRelaxed(i) == -1) then 
+            TAtom = "3"
+          end if
+
+          if( IsRelaxed(i)==1 .or. IsRelaxed(i)==2 .or. &
+     &       IsRelaxed(i) == -1) then
+            write(logic,'(A1, 3f16.8)') TAtom,xdef,ydef,zdef
+          endif         
+
+
+        endif         
          
   
          IF ( Key=='stra' .OR. Key=='stre' ) THEN

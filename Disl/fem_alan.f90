@@ -549,7 +549,9 @@
       DOUBLE PRECISION R(NDOF+1)
 !
       INTEGER Q_MAX
-      PARAMETER (Q_MAX=512)
+!      PARAMETER (Q_MAX=512)
+!     JM: double the value for larger system
+      PARAMETER (Q_MAX=1024)
       INTEGER queue(Q_MAX)
       INTEGER idummy , iel , ptr_put , ptr_get , i , lmn
       LOGICAL todo(MAXLMN) , FE_IN_TRI

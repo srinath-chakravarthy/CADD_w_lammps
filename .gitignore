@@ -30,4 +30,5 @@ perf.data*
 *-blx.bib
 *.blg
 
-
+# CMakeLists (srinath vs. my lammps distributions)
+*CMakeLists.txt

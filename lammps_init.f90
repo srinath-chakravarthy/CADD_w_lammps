@@ -226,7 +226,7 @@
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
 !!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
-        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al_adams_hex.eam.alloy Al Al Al Al")
+        call lammps_command(lmp, "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al")
 
         call lammps_command(lmp, "neighbor 0.1 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
@@ -235,7 +235,7 @@
         write(command_line,*) "variable mytemp equal", lammps_temperature
         call lammps_command(lmp, command_line)
         !!$call lammps_command(lmp, "variable mytemp equal 500.0")
-        call lammps_command(lmp, "velocity md_atoms create $(2.0*v_mytemp) 426789 dist uniform")
+        call lammps_command(lmp, "velocity md_atoms create $(2.0*v_mytemp) 426789 dist uniform rot yes mom yes")
         if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	  ! ---- Set Z-velocity to zero for 2d hex problem
@@ -252,9 +252,15 @@
 
 	! --- Todo put in langevin in the input file to say that there is a stadium ....
 	call lammps_command(lmp, "fix fix_integ md_atoms nve")
-	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
-	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
-	call lammps_command(lmp, command_line)
+    
+!!$	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+!!$	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
+!!$	call lammps_command(lmp, command_line)
+    
+    write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+       tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
+       -100000.00, 1000000.00, stadium_width
+    call lammps_command(lmp, command_line)
 
 	! ----------------------------------------------------------------------------------
 
@@ -269,17 +275,6 @@
 	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp")	  
 	  end if 
 	end if
-        !   --- Variables for actual temperature 
-        call lammps_command(lmp, "variable free_tempv equal c_free_temp")
-        call lammps_command(lmp, "variable stadium_tempv equal c_stadium_temp")
-        ! ---- Canonical Temperature variation 
-        call lammps_command(lmp, "variable nfree_atoms equal count(free_atoms)")
-        call lammps_command(lmp, "variable nstadium_atoms equal count(langevin_atoms)")
-        
-        call lammps_command(lmp, "variable canonical_free equal $((v_mytemp^2)/v_nfree_atoms)")
-        call lammps_command(lmp, "variable canonical_stadium equal $((v_mytemp^2)/v_nstadium_atoms)")
-        call lammps_command(lmp, "variable delt_free equal (c_free_temp-v_mytemp)^2")
-        call lammps_command(lmp, "variable delt_stadium equal (c_stadium_temp-v_mytemp)^2")
         
         ! ---- average the variance of the temperature 
 !!$        call lammps_command(lmp, "fix free_variance free_atoms ave/time 1 1000 1000 v_delt_free ave running")
@@ -308,7 +303,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_free_temp c_pe c_stadium_temp v_tot_energy")
+        call lammps_command(lmp,"thermo_style custom step c_free_temp c_stadium_temp c_pe v_tot_energy")
         
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")

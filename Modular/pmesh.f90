@@ -145,8 +145,8 @@
          DO i = 1 , 103
             IF ( MAPspecies(i)/=0 ) GOTO 250
          ENDDO
-         WRITE (*,*) '**ERROR: no constitutive information found'
-         die = .TRUE.
+         !WRITE (*,*) '**ERROR: no constitutive information found'
+         !die = .TRUE.
  250     IF ( die ) STOP
          WRITE (6,'(/2x,''**end of mesh definition**''/)')
 !

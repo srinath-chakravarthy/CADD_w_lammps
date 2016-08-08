@@ -300,6 +300,16 @@
 
 !C--Here comes inilization if newMD
       IF ( newmd ) THEN
+      
+!        Equilibrate initialized temperatures...
+!        Needed separately since otherwise the mapping
+!        gets mess up
+!         call equilibrate_lammps(lmp)
+      
+!        Added here in order give a particle an impact
+!        velocity after it's temperature has been equilibrated
+!         call add_fix_lammps(lmp)
+         
          SIMstep = 0
          ALLOCATE (AVEvirst(3,3,NUMnp))
          ALLOCATE (virst(3,3,NUMnp))
@@ -332,7 +342,7 @@
 !!$         write(command_line, fmt='(A18,I4,A55)') "dump 1 all custom ", total_lammps_steps, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
 !!$         call lammps_command(lmp, command_line)
          
-         call lammps_command(lmp, "run 0 pre yes post no")
+!!$         call lammps_command(lmp, "run 0 pre yes post no")
         !    --Initialize data
 !!$         DO iatom = 1 , NUMnp
 !!$            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN
@@ -342,6 +352,7 @@
          newmd = .false.
          solveFEM = .false.
          ifem = 0
+         
       ENDIF
 !     end of if new md loop
 !C--New MD initialization ends

@@ -64,7 +64,7 @@
       INTEGER logic
       CHARACTER*80 filename
 !c--JS: dwfactor 2 for asym and 1 for sym
-      dwfactorx = 2
+      dwfactorx = 1
       dwfactory = 1
 !c
       WRITE (*,*)
@@ -80,13 +80,13 @@
  
  
 ! Read mesh data
-      READ (5,*) nxregions , nyregions
-      READ (5,*) (xmax(i),i=1,nxregions)
-      READ (5,*) (ymax(i),i=1,nyregions)
-      READ (5,*) mindb
-      READ (5,*) rcutmesh
-      READ (5,*) X0Crack , Y0Crack
-      READ (5,*) PAD_width
+      READ (input_file_unit, *) nxregions , nyregions
+      READ (input_file_unit, *) (xmax(i),i=1,nxregions)
+      READ (input_file_unit, *) (ymax(i),i=1,nyregions)
+      READ (input_file_unit, *) mindb
+      READ (input_file_unit, *) rcutmesh
+      READ (input_file_unit, *) X0Crack , Y0Crack
+      READ (input_file_unit, *) PAD_width
  
       mirror = .FALSE.
  
@@ -671,7 +671,8 @@
       WRITE (6,*) 'Total elements: numel = ' , NUMel
       WRITE (6,*) 'rcutmesh = ' , rcutmesh
       NUMnpp1 = -1
- 
+      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0),(ymax(1) + pad_width+10.0) )
+
  
 !     Create a detection band
 !     Identify a path, defined by a closed polygon, ccw around the
@@ -762,12 +763,12 @@
  
       WRITE (6,*) 'width of the detection band: rcutmesh = ' , rcutmesh
  
-      CALL GEN_SLIP_PLANES(simulationcell%XMIN,simulationcell%xmax,&
-     &                     simulationcell%YMIN,simulationcell%ymax,&
-     &                     atomregion%XMIN,atomregion%xmax,&
-     &                     atomregion%YMIN,atomregion%ymax,slip_angle,&
-     &                     GRAins(1)%DCELL(1),xslip_start,yslip_start,&
-     &                     dxslip,dyslip,PAD_width)
+!       CALL GEN_SLIP_PLANES(simulationcell%XMIN,simulationcell%xmax,&
+!      &                     simulationcell%YMIN,simulationcell%ymax,&
+!      &                     atomregion%XMIN,atomregion%xmax,&
+!      &                     atomregion%YMIN,atomregion%ymax,slip_angle,&
+!      &                     GRAins(1)%DCELL(1),xslip_start,yslip_start,&
+!      &                     dxslip,dyslip,PAD_width)
  
       X_Move_mesh = 5.D0*dxslip
       MOVemesh = .FALSE.

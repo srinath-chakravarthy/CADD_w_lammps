@@ -7,6 +7,8 @@
 # ignore all files under targets dir
 targets/
 build/
+sims/
+misc/
 
 # test results
 *.out
@@ -30,5 +32,9 @@ perf.data*
 *-blx.bib
 *.blg
 
-# CMakeLists (srinath vs. my lammps distributions)
-*CMakeLists.txt
+# Ignore make files lammps/makefile and CMakeLists (srinath vs. my lammps distributions)
+CMakeLists.txt
+makefile
+
+# any .bak files
+*.bak

@@ -234,6 +234,7 @@ contains
          !if (lmpatom >= 1 .AND. lmpatom <= natoms) then
 			      rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
 			      rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+			      rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
          !end if
 	    end if
     end do	
@@ -326,6 +327,7 @@ contains
     ! ----- Averaged Displacement Components
     real (C_double), dimension(:), pointer :: compute_lammps_avg_dx => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_dy => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_dz => NULL()
 
   ! --------- Averaged Stress components -------
   real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
@@ -347,6 +349,7 @@ contains
 
     call lammps_extract_fix(compute_lammps_avg_dx, lmp, 'dx_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dy, lmp, 'dy_ave', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_dz, lmp, 'dz_ave', peratom_style, vector_type, 1, 1)
    
     call lammps_extract_compute(compute_lammps_stress, lmp, 'compute_stress', peratom_style, array_type)
 
@@ -359,7 +362,7 @@ contains
 
     do iatom = 1, numnp
        if (isRelaxed(iatom) /= 0) then
-	        AveDispl(1:2, iAtom) = 0.0d0
+	        AveDispl(1:NDF, iAtom) = 0.0d0
           if (isRelaxed(iatom) /= -1) then
 
              lmpatom = lammps_cadd_map(iatom)
@@ -367,17 +370,18 @@ contains
              !print*,'lmpatom update_cadd', lmpatom
              !if (lmpatom >= 1 .AND. lmpatom <= nsize) then
              
-             Atomforce(1:2,iatom) = lammps_force(1:2,lmpatom)
+             Atomforce(1:NDF,iatom) = lammps_force(1:NDF,lmpatom)
              
-             Velocity(1:2,iatom) = lammps_velocity(1:2,lmpatom)
+             Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
 
-             AtomDispl(1:2,iatom) = compute_lammps_dx(1:2, lmpatom)
+             AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
              
              if (isRelaxed(iAtom) == 2) then 
                 AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
                 AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
+                AveDispl(3, iatom) = compute_lammps_avg_dz(lmpatom)
              else
-                AveDispl(1:2, iatom) = AtomDispl(1:2,iatom)
+                AveDispl(1:NDF, iatom) = AtomDispl(1:NDF,iatom)
 
              end if
 

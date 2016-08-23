@@ -352,8 +352,19 @@
          newmd = .false.
          solveFEM = .false.
          ifem = 0
-         
-      ENDIF
+
+!!$      equilibrate for 10k steps
+         call lammps_command(lmp,'run 10000')
+
+!!$      recalculate fem forces after equilibration
+         CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
+     &                                AVEdispl,Atomforce,atommass,&
+     &                                systemenergy,Moveatoms,Movedisl,&
+     &                                fullfield,solvefem,straine0,ifem)
+
+         call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
+      
+	  ENDIF
 !     end of if new md loop
 !C--New MD initialization ends
 
@@ -433,9 +444,11 @@
 
             ENDIF
             dislpass = .FALSE.
-            IF ( DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,Ix,&
-                 &        Atomcoord,Atomdispl,Itx,ISRelaxed,NUMnp,NDF,NXDm,NUMel,&
-                 &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
+!!$
+!!$         hard coded off JM
+!!$            IF ( DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,Ix,&
+!!$                 &        Atomcoord,Atomdispl,Itx,ISRelaxed,NUMnp,NDF,NXDm,NUMel,&
+!!$                 &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
                IF ( dislpass ) PRINT * , 'Dislocation removed from atomistics'
 !!$	     if (npass > 1) then
 !!$		Nsteps = NstepsOrig*2
@@ -446,7 +459,7 @@
 !!$               mdsteps = mdsteps + 1
                WRITE (*,*) 'Disl checked by rank' , RANk
                ndis_checked = ndis_checked + 1
-            END IF
+!!$            END IF
             nnsteps = nnsteps + 1
 !!$	  if (Moved) then
 !!$       Output the new_atom config after moving atom_displacements
@@ -457,6 +470,8 @@
 !!$	     Moved = .false.
 !!$	  end if
 
+!!$         JM, hard coded off
+            MOVemesh = .false.
             IF ( MOVemesh ) THEN
 !!$               if (Moved) then
 !!$                  Moved = .false.
@@ -499,9 +514,9 @@
 
 			!CHECK THAT THIS IS WORKING
 			!Check the update to the B array inside dislocation 
-            update_all = .true.
+!            update_all = .true.
 !            update_pad = .true. 
-            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
+!            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)
          ENDDO
          
          mdsteps = mdsteps + fem_call_back_steps

@@ -81,8 +81,9 @@
         
         !! TODO get zmin and zmax from mat file automatically
         !!! --- For now assume single grain to be modified for multiple grains
-	zmin = 0.0d0
-	zmax = grains(1)%dcell(3)
+	!!zmax = 0.0d0
+	zmin = -grains(1)%dcell(3)/2.0
+	zmax = grains(1)%dcell(3)/2.0
         
         open(unit=1010, file='cadd_atoms.dat', status='UNKNOWN')
         natoms = 0
@@ -268,11 +269,13 @@
 	if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	    ! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+        call lammps_command(lmp, "compute md_temp md_atoms temp/partial 1 1 0")
 	    call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
 	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
 	  else 
-	    call lammps_command(lmp, "compute free_temp free_atoms temp")
-	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp")	  
+        call lammps_command(lmp, "compute md_temp md_atoms temp/com")
+	    call lammps_command(lmp, "compute free_temp free_atoms temp/com")
+	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
 	  end if 
 	end if
         
@@ -293,18 +296,20 @@
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
         call lammps_command(lmp, "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0")
-        !call lammps_command(lmp, "fix fix_2d all enforce2d")
-        if (nmaterials == 1) then 
+ 
+!!$ 2D material fixes (hex)    
+    if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+        call lammps_command(lmp, "fix fix_2d all enforce2d")
 	  end if 
 	end if
         
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_free_temp c_stadium_temp c_pe v_tot_energy")
-        
+        call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_pe c_ke")
+
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
 
@@ -319,6 +324,8 @@
         call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "fix dx_ave interface_atoms ave/atom 1 25 25 c_dx_inter[1]")
         write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[2]"
+        call lammps_command(lmp, command_line)
+        write(command_line,  '(A38, 2(1X,I3), A15)') "fix dz_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[3]"
         call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "fix dy_ave interface_atoms ave/atom 1 25 25 c_dx_inter[2]")
 !!$        call lammps_command(lmp, "fix dz_ave interface_atoms ave/atom 1 25 25 c_dx_inter[3]")
@@ -343,10 +350,11 @@
 
 
         ! ---- Dump data file 
-        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz c_dx_all[4]"
+        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] c_dx_all[3] fx fy fz vx vy vz"
         call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         
         call lammps_command(lmp, "run 0")
+        call lammps_command(lmp, "write_restart restart.cadd")
        
       end subroutine initialize_lammps

@@ -1,4 +1,4 @@
-!*==fem_setup.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
+      !*==fem_setup.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
 !
 !       $Id: fem_routines.f,v 1.1.1.12003/03/1220:09:00 shastry Exp $
 !
@@ -214,6 +214,8 @@
 !
       DO i = 1 , NFIxed
          IF ( Is_relaxed(IMAp(IFIx_hold(2,i)))==2 ) THEN
+	     !!$write(*,'(A,2I7,E15.6)') 'Fixed atom bc = ', IFIx_hold(1,i),IMAp(IFIx_hold(2,i)), & 
+	     !!$B(IFIx_hold(1,i),IMAp(IFIx_hold(2,i)))
             presv(i) = B(IFIx_hold(1,i),IMAp(IFIx_hold(2,i)))
          ELSE
             presv(i) = Prop*Bc(IFIx_hold(1,i),IMAp(IFIx_hold(2,i)))
@@ -441,21 +443,25 @@
             ENDIF
          ENDIF
       ENDDO
-!	Entry point in continuum/pad region is found
-      Xd(1:2) = Xd(1:2) + 2.0D0*Ifactor*B(1:2)
+!!$	Entry point in continuum/pad region is found
+!!$      Xd(1:2) = Xd(1:2) + 2.0D0*Ifactor*B(1:2)
 !
       END SUBROUTINE FINDENTRYPOINT
 !*==sliprange.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
 !***********************************************************************
-      SUBROUTINE SLIPRANGE(B,R,Range,Index)
+      SUBROUTINE SLIPRANGE(B,R,Range,Index, xyrange)
       USE MOD_FEM_PARAMETERS
       IMPLICIT NONE
 !*--SLIPRANGE460
       DOUBLE PRECISION B(3) , R(2) , Range(2) , xint(2) , RANGETOL
+      DOUBLE PRECISION :: line(3)
+      DOUBLE PRECISION :: XYRANGE(2,2)
+      
       PARAMETER (RANGETOL=0.5)
-      INTEGER Index , i
+      INTEGER Index , i, indx
       LOGICAL BETWEEN
       DOUBLE PRECISION a1 , a2 , a3 , bot , TOL
+      
       PARAMETER (TOL=1.E-6)
       INTEGER ism
 !
@@ -474,6 +480,9 @@
          a2 = -B(1)/(B(1)*R(2)-B(2)*R(1))
          a3 = 1.D0
       ENDIF
+      line(1) = a1; 
+      line(2) = a2;
+      line(3) = a3;
 !
 !       depending on orientation of b, use x or y for comparisons
 !
@@ -484,8 +493,32 @@
       ENDIF
 !
 !       find all intersections between boundary segments and this line,
-!       limit dislocation motion accordingly
-!
+      !!       limit dislocation motion accordingly
+      
+      !! xint is the location of the intersection point
+                                !
+      XYRANGE(1,1:2) = -1.0D30
+      XYRANGE(2,1:2) = 1.0D30
+      do ism = 1, Nsegm
+         bot = (a1*ABSegm(2,ism)-ABSegm(1,ism)*a2)
+         if (abs(bot) > tol) then
+            xint(1) = (ABSegm(3,ism)*a2-ABSegm(2,ism)*a3)/bot
+            xint(2) = (-ABSegm(3,ism)*a1+ABSegm(1,ism)*a3)/bot
+!       found an intersection:
+            IF ( BETWEEN(X0(1,ISEgm(1,ism)),X0(1,ISEgm(2,ism)),xint) )  THEN
+               do indx = 1, 2
+                  !! if x, y of dislocation is
+                  if (R(indx) < xint(indx)) then
+                     xyrange(2,indx) = min(xint(indx), xyrange(2,indx))
+                  else
+                     xyrange(1,indx) = max(xint(indx), xyrange(1,indx))
+                  end if
+               end do
+
+            END IF
+         end if
+      end do
+      
       Range(1) = -1.E30
       Range(2) = 1.E30
       DO ism = 1 , NSEgm
@@ -496,8 +529,7 @@
 !
 !       found an intersection:
 !
-            IF ( BETWEEN(X0(1,ISEgm(1,ism)),X0(1,ISEgm(2,ism)),xint) )&
-     &           THEN
+            IF ( BETWEEN(X0(1,ISEgm(1,ism)),X0(1,ISEgm(2,ism)),xint) )  THEN
                IF ( R(Index)<xint(Index) ) THEN
                   Range(2) = MIN(xint(Index),Range(2))
                ELSE
@@ -508,15 +540,67 @@
       ENDDO
 !
 !       set the closeness to the interface allowed.
-!
-      Range(2) = Range(2) - RANGETOL
-      Range(1) = Range(1) + RANGETOL
+                                !
+      if (range(2) < 0.0d0) then 
+         Range(2) = Range(2) - RANGETOL - 15.0d0
+      else
+         range(2) = range(2) + rangetol + 15.0d0
+      end if
+      if (range(1) < 0.0) then
+         range(1) = range(1) - rangetol - 15.0d0
+      else
+         Range(1) = Range(1) + RANGETOL + 15.0d0
+      end if
+      
       IF ( Index==1 ) THEN
          WRITE (*,*) 'X-range for the dislocation' , Range(1) , Range(2)
       ELSE
          WRITE (*,*) 'Y-range for the dislocation' , Range(1) , Range(2)
       ENDIF
+
+      do indx = 1,2
+	do i = 1, 2
+	    if (xyrange(i,indx) < 0.0d0) then 
+		xyrange(i,indx) = xyrange(i,indx) - rangetol - 5.0d0
+	    else
+		xyrange(i,indx) = xyrange(i,indx) + rangetol + 5.0d0
+	    end if
+	end do
+      end do
+      
+      write(*,'(A,2(1X,2E15.6))') 'X-Y range for dislocation = ', xyrange(1,1:2), xyrange(2,1:2)
+      
       END SUBROUTINE SLIPRANGE
+
+
+      subroutine print_element(lmn, rhs, b)
+            use mod_fem_parameters
+	    implicit none
+            double precision :: rhs(*)
+            integer, intent(in) :: lmn
+            double precision, optional :: b(3,*)
+            integer :: i, j, mapped_node
+            write(*,'(A,I7,A,3I7)') 'Element is = ', lmn, ' nodes are ', iconn(1,lmn), iconn(2,lmn), iconn(3,lmn)
+            write(*,'(A)',advance ='no')'Nodal displacements are '
+            do i = 1, knode
+               write(*,'(I7)', advance = 'no')  i
+               do j = 1, ndof
+                  write(*,'(E15.6)', advance = 'no') Rhs((ICOnn(i,Lmn)-1)*NDOF+j)
+               end do
+            end do
+	    write(*,*)
+            write(*,'(A,3I7)') 'Mapped element nodes are ',imap(iconn(1,lmn)), imap(iconn(2,lmn)), imap(iconn(3,lmn))
+            if (present(b)) then 
+	      write(*,'(A)',advance = 'no') 'Mapped nodal displacements are '
+	      do i = 1, knode
+		mapped_node = imap(iconn(i,lmn))
+		write(*,'(I7,2E15.6)', advance = 'no') i, B(1, mapped_node), B(2,mapped_node)
+	      end do
+	      write(*,*)
+	    end if
+      end subroutine print_element
+      
+      
  
 !
 !       $Log: fem_routines.f,v $

@@ -24,22 +24,29 @@
         double precision, intent(in) :: xmin, xmax, ymin, ymax
         double precision :: zmin, zmax
         double precision :: atom1_xmin, atom1_xmax, atom1_ymin, atom1_ymax
-        integer :: nsteps
         integer :: atomType
         logical :: top, bot, left, right, itop, ibot, ileft, iright
 
         integer :: i, j, k, l, natoms, npad, n
-        
-	OPEN (UNIT=200,FILE='md.inp',STATUS='old')
-	READ (200,*) stadium_width, exclude_top, exclude_bot, exclude_left, exclude_right
-	READ (200,*) damp_coeff , damp_ratio
-	READ (200,*) nh_dampcoeff
-	READ (200,*) lammps_temperature
-	READ (200,*) TIMestep1
-	READ (200,*) INDextimeh
-	READ (200,*) fem_update_steps
-	READ (200,*) nsteps
+      
+        OPEN (UNIT=200,FILE='md.inp',STATUS='old')
+        READ (200,*) stadium_width, exclude_top, exclude_bot, exclude_left, exclude_right
+        READ (200,*) damp_coeff , damp_ratio
+        READ (200,*) lammps_temperature
+        READ (200,*) lammps_timestep
+        READ (200,*) fem_update_steps
+        READ (200,*) num_md_steps
+        READ (200,*) lammps_output_steps
+        READ (200,*) num_restart_steps
+        READ (200,*) num_initial_equil
+        READ (200,*) particle_velocity
+        READ (200,*) particle_radius
+        READ (200,*) particle_height
+        READ (200,*) particle_rotation
+        READ (200,*) impact_angle
         CLOSE (200)
+        
+        
         top = .true.
         bot = .true.
         left = .true.
@@ -63,7 +70,7 @@
 
         
 	!!!! --- Assume units metal in lammps
-	lammps_timestep = TIMestep1/1.0d-12
+	lammps_timestep = lammps_timestep/1.0d-12
 	tstart = lammps_temperature
 	tstop = lammps_temperature
 	
@@ -76,7 +83,6 @@
 	end if
 	!!! Once again assuming metal units in lammps
 	damp_coeff = damp_coeff / 1.0d-12
-	lammps_output_steps = nsteps
         
         
         !! TODO get zmin and zmax from mat file automatically
@@ -212,6 +218,7 @@
         call lammps_command(lmp, 'atom_style atomic')
         call lammps_command(lmp, 'dimension 3')
         call lammps_command(lmp, 'boundary ss ss pp')
+!!$        call lammps_command(lmp, 'boundary ff ff pp')
         call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
 
         
@@ -308,7 +315,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_pe c_ke")
+        call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_pe c_ke vol")
 
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")

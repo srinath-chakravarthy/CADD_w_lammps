@@ -65,11 +65,17 @@
       INTEGER Ix(NEN1,NUMel)
       DOUBLE PRECISION X(NXDm,NUMnp) , s(3)
       CHARACTER*80 filename
-      INTEGER i , j , k , icheck , icheck2 , logic
+      INTEGER i , j , k , icheck , icheck2 , logic, ii
       LOGICAL first , Silent , intri , ontri
- 
+
+!      Does not work for multiple periods    
+!      IF ( ALLOCATED(ISRelaxed) ) DEALLOCATE (ISRelaxed)
+!      IF ( .NOT.ALLOCATED(ISRelaxed) ) ALLOCATE (ISRelaxed(NUMnp))
+
+!     Assumes cap size to include multiple periods
       IF ( ALLOCATED(ISRelaxed) ) DEALLOCATE (ISRelaxed)
-      IF ( .NOT.ALLOCATED(ISRelaxed) ) ALLOCATE (ISRelaxed(NUMnp))
+      IF ( .NOT.ALLOCATED(ISRelaxed) ) ALLOCATE (ISRelaxed(maxnp))
+
 !--- only atoms in the atomistic region (abs(ix(nen1,i)).eq.1) are "rela
 !--- in CG.
 !-- IsRelaxed=0: continuum
@@ -125,9 +131,10 @@
          ENDIF
       ENDDO
       WRITE (*,*) 'Number of nodes in the atomistic region:' , NQC
-      WRITE (*,*) 'Number of nodes in the elastic region:' , &
-     &            NUMnp - NQC - NSPring
+      WRITE (*,*) 'Number of nodes in the elastic region:' ,  NUMnp - NQC - NSPring
       WRITE (*,*) 'Number of nodes on the interface:' , NSPring
+      
+        
       IF ( NEN1/=4 ) STOP 'ERROR: nen must be 3!'
       filename = 'out/check.plt'
       OPEN (UNIT=123,FILE=filename,STATUS='unknown')
@@ -277,35 +284,30 @@
       WRITE (logic,FMT='(A)') 'Detection Band Check from CADD'
       WRITE (logic,FMT='(A)') 'ASCII'
       WRITE (logic,FMT='(A)') 'DATASET UNSTRUCTURED_GRID'
-      WRITE (logic,FMT='(A6,1x,I7,1x,A5)') 'POINTS' , NUMel*3 , 'float'
-      DO n = 1 , NUMel
-         iregion = Ix(NEN1,n)
-         i1 = Ix(1,n)
-         i2 = Ix(2,n)
-         i3 = Ix(3,n)
-         x1 = X(1,i1)
-         x2 = X(1,i2)
-         x3 = X(1,i3)
-         y1 = X(2,i1)
-         y2 = X(2,i2)
-         y3 = X(2,i3)
-         WRITE (logic,'(3e13.5)') x1 , y1 , 0.0
-         WRITE (logic,'(3e13.5)') x2 , y2 , 0.0
-         WRITE (logic,'(3e13.5)') x3 , y3 , 0.0
+      WRITE (logic,FMT='(A6,1x,I7,1x,A5)') 'POINTS' , Numnp , 'float'
+      DO n = 1 , Numnp
+         WRITE (logic,'(3e13.5)') x(1,n) , x(2,n) , 0.0
       ENDDO
+
       WRITE (logic,*)
       WRITE (logic,'(A5,1X,I7,1X,I7)') 'CELLS' , NUMel , 4*NUMel
  
       DO n = 1 , NUMel
-         i = (n-1)*3 - 1
-         WRITE (logic,'(4i6)') 3 , i + 1 , i + 2 , i + 3
+         WRITE (logic,'(4i6)') 3 , ix(1,n)-1, ix(2,n)-1, ix(3,n)-1
       ENDDO
       WRITE (logic,'(A10,1X,I7)') 'CELL_TYPES' , NUMel
  
       DO n = 1 , NUMel
          WRITE (logic,FMT='(5(1x,I7))') 5
       ENDDO
- 
+      
+      write(logic,*) 'Point data', numnp
+      write(logic,*) 'Scalars status integer'
+      WRITE (logic,*) 'LOOKUP_TABLE default'
+      do i = 1, numnp
+         write(logic, '(I3)') isrelaxed(i)
+      end do
+      
       WRITE (logic,*) 'CELL_DATA' , NUMel
       WRITE (logic,*) 'SCALARS DB integer'
       WRITE (logic,*) 'LOOKUP_TABLE default'

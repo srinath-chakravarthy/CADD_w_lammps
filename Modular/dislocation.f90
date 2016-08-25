@@ -45,8 +45,7 @@
       IMPLICIT NONE
 !*--MOD_DISLOCATION46
       INTEGER nburger , nslip
-      DOUBLE PRECISION , ALLOCATABLE :: utilde(:,:) , epsloc(:,:,:) , &
-     &                                  amat(:,:,:) , enorm(:)
+      DOUBLE PRECISION , ALLOCATABLE :: utilde(:,:) , epsloc(:,:,:) , amat(:,:,:) , enorm(:)
       INTEGER , ALLOCATABLE :: imap(:) , iburg(:)
       LOGICAL , ALLOCATABLE :: possible(:,:)
       LOGICAL newslip
@@ -93,8 +92,7 @@
 !---  PI is deliberately less than full 3.14159 to be PI-epsilon
       PARAMETER (PI=3.1415)
  
-      INTEGER upper , lower , NEXT , idum , logic , nnewdis , inew , &
-     &        itheta_e
+      INTEGER upper , lower , NEXT , idum , logic , nnewdis , inew , itheta_e
       CHARACTER*80 filename
       CHARACTER*4 key
       key = Input(1:4)
@@ -145,50 +143,48 @@
       ENDDO
       IF ( key/='dire' ) CLOSE (logic)
       END SUBROUTINE NEWDISLOCATION
-!*==dislcheck.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
-!**********************************************************************
-!
-!     dislcheck:
-!     main point of contact for checking if dislocations want to pass
-!     either way.
-!
+!!$!*==dislcheck.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
+!!$!**********************************************************************
+!!$!
+!!$!     dislcheck:
+!!$!     main point of contact for checking if dislocations want to pass
+!!$!     either way.
+!!$!
       LOGICAL FUNCTION DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,&
      &                           Ix,X,B,Itx,Isrelaxed,Numnp,Ndf,Nxdm,&
-     &                           Numel,Nen1,Newmesh,Plottime,Dislpass,&
-     &                           Npass)
+     &                           Numel,Nen1,Newmesh,Plottime, dislpass, npass)
       IMPLICIT NONE
-!*--DISLCHECK160
+!!$!*--DISLCHECK160
       INTEGER Npass
-      LOGICAL Checkslip , Lostslip , Addedslip , Movedisl , Newmesh
+      LOGICAL Checkslip , Lostslip , Addedslip , Movedisl , Newmesh, dislpass
       INTEGER Numnp , Ndf , Nxdm , Numel , Nen1
       INTEGER Ix(Nen1,Numel) , Itx(3,Numel) , Isrelaxed(Numnp)
       DOUBLE PRECISION X(Nxdm,Numnp) , B(Ndf,Numnp) , Plottime
-      LOGICAL Dislpass
+
       DISLCHECK = .FALSE.
-!
-!     if we are checking for dislocation passings, proceed, otherwise
-!     just return
-!
+!!$!
+!!$!     if we are checking for dislocation passings, proceed, otherwise
+!!$!     just return
+!!$!
       IF ( Checkslip ) THEN
 !
-!     only check for dislocations leaving the continuum if the
-!     dislocations are mobile.  Lostslipcheck looks for dislocations
-!     that want to go from continuum to atomistic
-!
+!!$!     only check for dislocations leaving the continuum if the
+!!$!     dislocations are mobile.  Lostslipcheck looks for dislocations
+!!$!     that want to go from continuum to atomistic
+         !
          IF ( Movedisl ) THEN
-            CALL LOSTSLIPCHECK(Lostslip,Ix,X,B,Npass)
+            CALL LOSTSLIPCHECK(Lostslip,Ix,X,B)
             IF ( Lostslip ) THEN
                DISLCHECK = .TRUE.
                RETURN
             ENDIF
          ENDIF
-!
-!     check detection band for dislocations that want to go from
-!     atomistic to continumm
-!
+!!$!     check detection band for dislocations that want to go from
+!!$!     atomistic to continumm
+
+
          IF ( .NOT.Lostslip ) THEN
-            CALL SLIPCHECK(X,B,Ix,Itx,Isrelaxed,Numnp,Ndf,Nxdm,Numel,&
-     &                     Nen1,Newmesh,Addedslip,Plottime,Dislpass)
+            CALL SLIPCHECK(X,B,Ix,Itx,Isrelaxed,Numnp,Ndf,Nxdm,Numel,Nen1,Newmesh,Addedslip,Plottime, dislpass)
             Lostslip = .FALSE.
  
             IF ( Addedslip ) THEN
@@ -196,32 +192,33 @@
                RETURN
             ENDIF
          ENDIF
+!!$         write(*, '(A,3I7)')'IX after slip_check ==============================', ix(1,1), ix(2,1), ix(3,1)
+
       ENDIF
       END FUNCTION DISLCHECK
-!*==slipcheck.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
-!*********************************************************************
-!
-!     slipcheck:  checks detection band for dislocations leaving the
-!     atomistic region.
-!
+!!$!*==slipcheck.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
+!!$!*********************************************************************
+!!$!
+!!$!     slipcheck:  checks detection band for dislocations leaving the
+!!$!     atomistic region.
+!!$!
       SUBROUTINE SLIPCHECK(X,B,Ix,Itx,Isrelaxed,Numnp,Ndf,Nxdm,Numel,&
-     &                     Nen1,Newmesh,Addedslip,Plottime,Dislpass)
+     &                     Nen1,Newmesh,Addedslip,Plottime, dislpass)
       USE MOD_DISLOCATION
       USE MOD_FILE
       USE MOD_BOUNDARY
       USE MOD_PARALLEL
       IMPLICIT NONE
-!*--SLIPCHECK214
+!!$!*--SLIPCHECK214
+      LOGICAL :: image_flag
       LOGICAL Newmesh , Addedslip
       INTEGER Numnp , Ndf , Numel , Nen1 , Nxdm , i , n1 , n2 , n3
       DOUBLE PRECISION X(Nxdm,Numnp) , B(Ndf,Numnp) , det , Plottime
       INTEGER Ix(Nen1,Numel) , Isrelaxed(Numnp) , Itx(3,*)
       LOGICAL Dislpass
  
-      INTEGER j1 , j2 , j3 , i1 , i2 , i3 , node1 , node2 , j , k1 , &
-     &        k2 , iel , k , kmod
-      INTEGER itotal , itheta , kp1 , kp2 , ndisl , numnew , ifactor , &
-     &        idb
+      INTEGER j1 , j2 , j3 , i1 , i2 , i3 , node1 , node2 , j , k1 , k2 , iel , k , kmod
+      INTEGER itotal , itheta , kp1 , kp2 , ndisl , numnew , ifactor , idb
       INTEGER , VOLATILE :: idbcopy , jcopy
       LOGICAL found(3) , incontinuum , inatoms
       CHARACTER*80 filename
@@ -231,8 +228,7 @@
       DOUBLE PRECISION LENGTHTOL , LENGTHTOL2 , PI
 !     Qu modification begins
 !
-      INTEGER nelenear , nelenext , nsidenext , nsideright , nsideleft ,&
-     &        ibnext , nsidenearr , nsidenearl , nside , kk
+      INTEGER nelenear , nelenext , nsidenext , nsideright , nsideleft , ibnext , nsidenearr , nsidenearl , nside , kk
       DOUBLE PRECISION amatnext(3,2) , epslocnext(3,3) , coordside(2) , &
      &                 coordright(2) , coordleft(2) , vecright(2) , &
      &                 vecleft(2) , veclength , dotright , dotleft
@@ -243,23 +239,23 @@
  
       INTEGER , VOLATILE :: islp
  
-!     Qu modification ends
-!
-!---  PI is deliberately less than full 3.14159 to be PI-epsilon
+!!$!     Qu modification ends
+!!$!
+!!$!---  PI is deliberately less than full 3.14159 to be PI-epsilon
       PARAMETER (LENGTHTOL=1.E-4,LENGTHTOL2=1.E-8,PI=3.1415)
-!
-!     allocate and initialize data structure
-!
+!!$!
+!!$!     allocate and initialize data structure
+!!$!
       Addedslip = .FALSE.
       IF ( Newmesh ) THEN
          oidb = 0
-!     write(*,*) '** First Entry to slipcheck: initializing'
+!!$!     write(*,*) '** First Entry to slipcheck: initializing'
          Newmesh = .FALSE.
          NEWslip = .TRUE.
          IF ( ALLOCATED(EPSloc) ) DEALLOCATE (EPSloc,IMAp,UTIlde,AMAt,&
      &        IBUrg,POSsible,ENOrm,ELIdb,examined)
-!--   count the slip detection elements
-!     Qu modified detection band rings starts
+!!$!--   count the slip detection elements
+!!$!     Qu modified detection band rings starts
          NSLip = 0
          DO idb = NDBpoly , 1 , -1
             DO i = 1 , NELidb(idb)
@@ -669,9 +665,7 @@
 !
                CALL CHECKBURGERS(EPSloc(1:3,1:3,i),POSsible(1:NBUrger,i)&
      &                           ,IBUrg(i),X,B,Ix,IMAp(i),ENOrm)
-               WRITE (*,*) 'slip found in element' , IMAp(i) , &
-     &                     ABS(Ix(Nen1,IMAp(i))) , ELIdb(i) , NDBpoly , &
-     &                     ' :'
+               WRITE (*,'(A,4I7,A)') 'slip found in element' , IMAp(i) ,  ABS(Ix(Nen1,IMAp(i))) , ELIdb(i) , NDBpoly , ' :'
 !$$$               write(*,*) x(1:2,ix(1,imap(i))),b(1:3,ix(1,imap(i)))
 !$$$               write(*,*) x(1:2,ix(2,imap(i))),b(1:3,ix(2,imap(i)))
 !$$$               write(*,*) x(1:2,ix(3,imap(i))),b(1:3,ix(3,imap(i)))
@@ -679,8 +673,7 @@
 !$$$               write(*,*) 'strain matrix:'
 !$$$               write(*,'(3e15.6)') (epsloc(j,1:3,i),j=1,3)
 !$$$               write(*,*)
-               WRITE (*,*) 'burgers vector:' , IBUrg(i) , &
-     &                     BURg(1:3,IBUrg(i))
+               WRITE (*,'(A,I5,3F16.6)') 'burgers vector:' , IBUrg(i) , BURg(1:3,IBUrg(i))
  
 !
 !     process the dislocation:  determine its location, the direction of
@@ -738,37 +731,39 @@
 !     Check of Detection band polygon is a boundary (dbboundnear))
 !     pass it ony if it is in this polygon
                   IF ( DBBoundnear(idb) ) THEN
+                     CALL FINDENTRYPOINT(bvec,x0,xd)
                      IF ( itheta==0 ) THEN
                         ifactor = -1
                      ELSE
                         ifactor = 1
                      ENDIF
-                     islp = 0
-                     s_dis = 0.0D0
-                     CALL FINDENTRYPOINT(bvec,x0,xd,ifactor)
-                     CALL FINDSLIPPLANE(bvec,x0,ifactor,islp,theta_s,&
-     &                                  s_dis,xd,xi)
-!
+                     xd(1:2)=xd(1:2)+15.0d0*ifactor*bvec(1:2)
+                     !! Try to place the dilsocation 
+
+!!$                     CALL FINDSLIPPLANE(bvec,x0,ifactor,islp,theta_s,&
+!!$     &                                  s_dis,xd,xi)
+
+                     !
 !--   choose location for the "image" dislocation as far from any
 !--   detection bands as possible.
 !
-!$$$                     call FindImageLocation(xi,ifactor,x0,bvec(1:3),
-!$$$     $                    ,nxdm,numnp,numel,nen1)
+                     call FindImageLocation(xi,ifactor,x0,bvec(1:3),ix,x,nxdm,numnp,numel,nen1)
                      theta_e = itheta*PI
-                     WRITE (*,*) 'dislocation at ' , x0
-                     WRITE (*,*) 'passed to ' , xd
-                     WRITE (*,*) 'Image Location' , xi
-                     WRITE (*,*) 'with b=' , bvec(1:3)
-                     WRITE (*,*) 'and theta_e=' , theta_e
-                     WRITE (*,*) 'and theta_s=' , theta_s
- 
-                     CALL DISL_PASS(x0,xd,bvec(1:3),theta_e,theta_s,X,B,&
-     &                              Isrelaxed,Numnp,.TRUE.,.TRUE.,0,&
-     &                              islp,s_dis)
-!$$$                     itheta=mod(itheta+1,2)
-!$$$                     theta_e=itheta*PI
-!$$$                     call disl_pass(xi,xi,-bvec(1:3),theta_e,theta_s
-!$$$     $                    ,b,IsRelaxed,numnp,.true.,.true.)
+                     WRITE (*,'(A,3F15.6)', advance = 'no') 'dislocation at ' , x0
+                     WRITE (*,'(A,3F15.6)') ' passed to ' , xd
+                     WRITE (*,'(A,3F15.6)') 'Image Location' , xi
+                     WRITE (*,'(A,3F15.6)') 'with b=' , bvec(1:3)
+                     WRITE (*,'(A,F15.6)', advance = 'no') ' and theta_e=' , theta_e
+                     WRITE (*,'(A,F15.6)') ' and theta_s=' , theta_s
+		     image_flag = .false.
+                     CALL DISL_PASS(x0,xd,bvec(1:3),theta_e,theta_s,X,B,Isrelaxed,Numnp,.TRUE.,.TRUE.)
+                     !! --- Number of dislocation passed into atomistics
+                     itheta=mod(itheta+1,2)
+                     theta_e=itheta*PI
+                     image_flag = .true. 
+                     call disl_pass(xi,xi,-bvec(1:3),theta_e,theta_s,X,B,IsRelaxed,numnp,.true.,.true.)
+                     image_flag = .false. 
+                     
                      CALL DISL_PRINT(0)
 99001                FORMAT (5E15.6)
                      Dislpass = .TRUE.
@@ -800,8 +795,7 @@
       SUBROUTINE GETELEMENTSTRAIN(B1,B2,B3,Amat,Eps)
       IMPLICIT NONE
 !*--GETELEMENTSTRAIN802
-      DOUBLE PRECISION Amat(3,2) , B1(3) , B2(3) , B3(3) , u(3,3) , &
-     &                 Eps(3,3) , ua(3,3)
+      DOUBLE PRECISION Amat(3,2) , B1(3) , B2(3) , B3(3) , u(3,3) , Eps(3,3) , ua(3,3)
       u(1:3,1) = B1
       u(1:3,2) = B2
       u(1:3,3) = B3
@@ -825,12 +819,9 @@
       INTEGER Iel , Ix(NEN1,*) , Ib , ibest , i
       LOGICAL P(*)
 !
-      DOUBLE PRECISION dx1(3) , dx2(3) , dy1(3) , dy2(3) , norm , del(3)&
-     &                 , normmin , testmin , dz1(3) , dz2(3)
-      dx1 = X(1:3,Ix(2,Iel)) - X(1:3,Ix(1,Iel)) + B(1:3,Ix(2,Iel))&
-     &      - B(1:3,Ix(1,Iel))
-      dx2 = X(1:3,Ix(3,Iel)) - X(1:3,Ix(1,Iel)) + B(1:3,Ix(3,Iel))&
-     &      - B(1:3,Ix(1,Iel))
+      DOUBLE PRECISION dx1(3) , dx2(3) , dy1(3) , dy2(3) , norm , del(3), normmin , testmin , dz1(3) , dz2(3)
+      dx1 = X(1:3,Ix(2,Iel)) - X(1:3,Ix(1,Iel)) + B(1:3,Ix(2,Iel)) - B(1:3,Ix(1,Iel))
+      dx2 = X(1:3,Ix(3,Iel)) - X(1:3,Ix(1,Iel)) + B(1:3,Ix(3,Iel)) - B(1:3,Ix(1,Iel))
       dy1 = X(1:3,Ix(2,Iel)) - X(1:3,Ix(1,Iel))
       dy2 = X(1:3,Ix(3,Iel)) - X(1:3,Ix(1,Iel))
       normmin = 1.E30
@@ -954,8 +945,7 @@
          WRITE (*,*) 'structure type:' , Struct
          STOP 'not recognized in rotateburgers'
       ENDIF
-      ALLOCATE (EPSlib(3,3,NBUrger),FLIb(3,3,NBUrger),BURg(4,NBUrger),&
-     &          NORmal(3,NBUrger))
+      ALLOCATE (EPSlib(3,3,NBUrger),FLIb(3,3,NBUrger),BURg(4,NBUrger),NORmal(3,NBUrger))
       q2 = 0.D0
       q2(1,1) = Rotmat(1)
       q2(2,2) = Rotmat(1)
@@ -981,9 +971,7 @@
                      NORmal(1:3,NBUrger) = m
                      BURg(1:3,NBUrger) = is*MATMUL(q2,b1)
                      BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b1,b1))
-                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,&
-     &                              EPSlib(1:3,1:3,NBUrger),&
-     &                              FLIb(1:3,1:3,NBUrger))
+                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m, EPSlib(1:3,1:3,NBUrger),FLIb(1:3,1:3,NBUrger))
                   ENDDO
                ENDDO
             ENDIF
@@ -1013,21 +1001,17 @@
                      NORmal(1:3,NBUrger) = m
                      BURg(1:3,NBUrger) = is*MATMUL(q2,b1)
                      BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b1,b1))
-                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,&
-     &                              EPSlib(1:3,1:3,NBUrger),&
-     &                              FLIb(1:3,1:3,NBUrger))
+                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,EPSlib(1:3,1:3,NBUrger),FLIb(1:3,1:3,NBUrger))
                      NBUrger = NBUrger + 1
                      NORmal(1:3,NBUrger) = m
                      BURg(1:3,NBUrger) = is*MATMUL(q2,b2)
                      BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b2,b2))
-                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,&
-     &                              EPSlib(1:3,1:3,NBUrger),&
-     &                              FLIb(1:3,1:3,NBUrger))
+                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,EPSlib(1:3,1:3,NBUrger),FLIb(1:3,1:3,NBUrger))
                   ENDDO
                ENDIF
             ENDDO
          ENDDO
-!--   Qu modification begins
+!!$--   Qu modification begins
          d = A0/rt6
          DO ip = 1 , 3
             ip2 = MOD(ip,3) + 1
@@ -1049,14 +1033,12 @@
                      NORmal(1:3,NBUrger) = m
                      BURg(1:3,NBUrger) = is*MATMUL(q2,b1)
                      BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b1,b1))
-                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,&
-     &                              EPSlib(1:3,1:3,NBUrger),&
-     &                              FLIb(1:3,1:3,NBUrger))
+                     CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,EPSlib(1:3,1:3,NBUrger), FLIb(1:3,1:3,NBUrger))
                   ENDDO
                ENDIF
             ENDDO
          ENDDO
-!--   Qu modification ends
+!!$--   Qu modification ends
       ELSEIF ( Struct=='hex' ) THEN
          a6 = A0/2.D0
          a62 = rt3*a6
@@ -1080,11 +1062,8 @@
                   NORmal(1:3,NBUrger) = m
                   BURg(1:3,NBUrger) = is*MATMUL(q2,b1)
                   BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b1,b1))
-                  WRITE (*,'(i3,3e15.6,2x,4e15.6)') NBUrger , b1 , &
-     &                   BURg(1:4,NBUrger)
-                  CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,&
-     &                           EPSlib(1:3,1:3,NBUrger),&
-     &                           FLIb(1:3,1:3,NBUrger))
+                  WRITE (*,'(i3,3e15.6,2x,4e15.6)') NBUrger , b1 , BURg(1:4,NBUrger)
+                  CALL GETSTRAIN(BURg(1:3,NBUrger),d,m,EPSlib(1:3,1:3,NBUrger),FLIb(1:3,1:3,NBUrger))
                   WRITE (*,'(10x,3e15.6)') (EPSlib(j,1:3,NBUrger),j=1,3)
                ENDDO
             ENDIF
@@ -1101,10 +1080,8 @@
       BURg(1:4,NBUrger) = 0.D0
       WRITE (*,*) '------burgers vectors-------'
       DO i = 1 , NBUrger
-         WRITE (*,'(i3,3e15.6,5x,4e15.6)') i , NORmal(1:3,i) , &
-     &          BURg(1:4,i)
-         WRITE (*,'(2(10x,3e15.6))') (EPSlib(j,1:3,i),FLIb(j,1:3,i),j=1,&
-     &                               3)
+         WRITE (*,'(i3,3e15.6,5x,4e15.6)') i , NORmal(1:3,i) ,  BURg(1:4,i)
+         WRITE (*,'(2(10x,3e15.6))') (EPSlib(j,1:3,i),FLIb(j,1:3,i),j=1,3)
       ENDDO
       WRITE (*,*) '-----------------------'
       END SUBROUTINE ROTATEBURGERS
@@ -1322,8 +1299,7 @@
 !     InContinuum: check if the point xd is in one of the the continuum
 !     region elements
 !
-      LOGICAL FUNCTION INCONTINUUM(Xd,Ix,X,Nxdm,Numnp,Numel,Nen1,&
-     &                             Inatoms)
+      LOGICAL FUNCTION INCONTINUUM(Xd,Ix,X,Nxdm,Numnp,Numel,Nen1,Inatoms)
       IMPLICIT NONE
 !*--INCONTINUUM1328
       INTEGER Nxdm , Numnp , Numel , Nen1
@@ -1333,8 +1309,7 @@
       INCONTINUUM = .FALSE.
       Inatoms = .FALSE.
       DO i = 1 , Numel
-         in = INTRI(X(1:2,Ix(1,i)),X(1:2,Ix(2,i)),X(1:2,Ix(3,i)),Xd,s,&
-     &        ontri)
+         in = INTRI(X(1:2,Ix(1,i)),X(1:2,Ix(2,i)),X(1:2,Ix(3,i)),Xd,s, ontri)
          IF ( in .OR. ontri ) THEN
             IF ( Ix(Nen1,i)==0 ) THEN
                INCONTINUUM = .TRUE.
@@ -1351,8 +1326,7 @@
 !     FindImageLocation:  figure out where to put the image dislocation
 !     so that it is far away from any continuum regions.
 !
-      SUBROUTINE FINDIMAGELOCATION(Xi,Ifactor,X0,Bmat,Ix,X,Nxdm,Numnp,&
-     &                             Numel,Nen1)
+      SUBROUTINE FINDIMAGELOCATION(Xi,Ifactor,X0,Bmat,Ix,X,Nxdm,Numnp,Numel,Nen1)
       IMPLICIT NONE
 !*--FINDIMAGELOCATION1357
       INTEGER Ifactor , Numel , Nen1 , Numnp , Nxdm
@@ -1430,9 +1404,7 @@
  
  
       INTEGER next , NMAX , ifound , iel , j , i , n1 , n2 , jp1 , iring
-!      PARAMETER (NMAX=600)
-!     JM: double the value for larger system
-      PARAMETER (NMAX=1200)
+      PARAMETER (NMAX=1600)
       LOGICAL found
       DOUBLE PRECISION d1 , dmin , vec(2)
       INTEGER , ALLOCATABLE :: nn(:) , neigh(:,:)
@@ -1514,12 +1486,12 @@
             ENDDO
             IF ( found ) THEN
                ip(2) = ifound
+!!$	       print *, 'vertex ', ip(1), ip(2), next
                DO iel = 1 , Numel
                   DO j = 1 , 3
                      jp1 = MOD(j,3) + 1
-                     IF ( Ix(j,iel)==ip(2) .AND. Ix(jp1,iel)==ip(1) )&
-     &                    THEN
-!$$$  print *, 'Detection band element = ', iel, -j
+                     IF ( Ix(j,iel)==ip(2) .AND. Ix(jp1,iel)==ip(1) )  THEN
+!!$			print *, 'Detection band element = ', iel, -j, next
                         Ix(Nen1,iel) = -j
 !     Qu modified detection band ring starts
                         iring = iring + 1
@@ -1571,7 +1543,7 @@
 !     atom/continuum interface and new free surfaces.
 !
  
-      SUBROUTINE LOSTSLIPCHECK(Lostslip,Ix,X,B,Npass)
+      SUBROUTINE LOSTSLIPCHECK(Lostslip,Ix,X,B)
       USE MOD_DISL_PARAMETERS
       IMPLICIT NONE
 !*--LOSTSLIPCHECK1575
@@ -1582,21 +1554,28 @@
       Npass = 0
 !print *, 'In lostslipcheck'
       DO i = 1 , NDIsl
-         IF ( ELEm_disl(i)/=0 ) THEN
+         IF ( ELEm_disl(i) > 0 ) THEN
             pass = .FALSE.
             r1 = R_Disl(1,i)
             r2 = R_Disl(2,i)
             r = SQRT(r1**2+r2**2)
 !$$$            print *, 'In lostslipcheck', i, r1, disl_range(1,i),
 !$$$     $           r2, disl_range(2,i)
-            IF ( ABS(r1)<ABS(DISl_range(1,i)) ) THEN
-               IF ( ABS(r2)<ABS(DISl_range(2,i)) ) pass = .TRUE.
-               Npass = Npass + 1
-            ENDIF
+	    if (abs(r1) <= abs(disl_residence(1,1,i)) .and. abs(r1) <= abs(disl_residence(2,1,i))) then 
+		if (abs(r2) <= abs(disl_residence(1,2,i)) .and. abs(r2) <= abs(disl_residence(2,2,i))) then 
+		pass = .TRUE. 
+		Npass = Npass + 1
+		end if
+	    end if	
+
+!!$            IF ( ABS(r1)<ABS(DISl_range(1,i)) ) THEN
+!!$               IF ( ABS(r2)<ABS(DISl_range(2,i)) ) pass = .TRUE.
+!!$               Npass = Npass + 1
+!!$            ENDIF
             IF ( pass ) THEN
-               PRINT * , 'Entering PasstoAtomistic' , i , r , &
-     &               DISl_range(DISl_index(i),i) , ELEm_disl(i) , &
-     &               R_Old(1:2,i) , R_Disl(1:2,i)
+	       write(*,'(A,I4,4(1X,E15.6),I7,4(1X,E15.6))') 'Entering PasstoAtomistic' , i, &
+	       disl_residence(1:2,1,i), disl_residence(1:2,2,i), & 
+		ELEM_disl(i), R_old(1:2,i), R_Disl(1:2,i)
 !           if(r.lt.disl_range(1,i).or.r.gt.disl_range(2,i)) then
                CALL PASSTOATOMISTIC(R_Disl(1,i),R_Old(1,i),BURgers(1,i),&
      &                              THEta_e(i),THEta_s(i),Ix,X,B,&
@@ -1615,8 +1594,7 @@
 !     PassToAtomistic.  As the name suggests, come here when we have
 !     found a DD that wants to leave the continuum.
 !
-      SUBROUTINE PASSTOATOMISTIC(R,Rold,Burgers,Te,Ts,Ix,X,B,Lostslip,&
-     &                           Idis_slip)
+      SUBROUTINE PASSTOATOMISTIC(R,Rold,Burgers,Te,Ts,Ix,X,B,Lostslip)
       USE MOD_DISLOCATION
       USE MOD_GLOBAL
       USE MOD_BOUNDARY
@@ -1681,8 +1659,7 @@
             xd(1:2) = xd(1:2) + nshift*ifactor*Burgers(1:2)
             PRINT * , 'Disl. Position in atomistics' , ifactor , xd
             ifactor = -ifactor
-            CALL FINDIMAGELOCATION(xi,ifactor,xd,Burgers,Ix,X,NXDm,&
-     &                             NUMnp,NUMel,NEN1)
+            CALL FINDIMAGELOCATION(xi,ifactor,xd,Burgers,Ix,X,NXDm,NUMnp,NUMel,NEN1)
 !
 !     puts the discrete dislocation as far from the detection bands as
 !     possible
@@ -1694,8 +1671,7 @@
 !
  
             PRINT * , 'Dislocation initially at' , Rold(1:2)
-            CALL DISL_PASS(Rold,xd,Burgers,Te,Ts,X,B,ISRelaxed,NUMnp,&
-     &                     .TRUE.,.FALSE.,Idis_slip)
+            CALL DISL_PASS(Rold,xd,Burgers,Te,Ts,X,B,ISRelaxed,NUMnp,.TRUE.,.FALSE.)
             NEWslip = .TRUE.
             Lostslip = .TRUE.
             WRITE (*,*) 'Dislocation passed to Atomistics'

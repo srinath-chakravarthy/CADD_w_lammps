@@ -144,20 +144,19 @@
 !
 !--	Local variables
       INTEGER isdamped(MAXATOMS)
-      INTEGER nsteps , i , iatom , j , rc , intatom1 , intatom2 , &
+      INTEGER i , iatom , j , rc , intatom1 , intatom2 , &
      &        intatom3 , intatom4
       INTEGER ii , jj
       INTEGER NUMmdatoms , femsteps , ndis_checked
-      INTEGER mdsteps , nnsteps , maxmdsteps
-      INTEGER femstepmin , femsteprange , femstepcounter , istep , &
+      INTEGER mdsteps , nnsteps 
+      INTEGER femsteprange , femstepcounter , istep , &
      &        readneighbors
 !--	Indexes for H atoms, using the fact that they are adjacent
       INTEGER :: hindex_init = 0 , hindex_final = -1 , indexmin , &
      &           indexmax
       INTEGER :: numinterstitial = 0
 
-      DOUBLE PRECISION atommass , damped_width , langevincoeff , &
-     &                 lcnhdampcoeff , requiredtemp , currenttemp , &
+      DOUBLE PRECISION atommass , currenttemp , &
      &                 picosecond , systemenergy , timestep , &
      &                 tinterior , stadiumtemp , atomtemp
 !
@@ -181,7 +180,6 @@
       DOUBLE PRECISION :: dtol
 !
       TYPE (REGION) simulationcell
-      TYPE (MD_THERMOSTAT) thermostat
 !
 
 !--	Functions
@@ -219,7 +217,7 @@
       timestep = 1.0D-15                        ! seconds
       femsteps = 1
       fullfield = .TRUE.
-      femstepmin = 5
+      fem_update_steps = 5
       femsteprange = 0
 !
       dtol = 1.D-3
@@ -229,56 +227,29 @@
 !	Read Data
 !C--Jun Song NumMDRescale is # of MD steps
 !C--doing temperature rescaling
-!C--Reading neighborlist update parameter
+!C--Reading neighborlist update parameter 
       OPEN (UNIT=200,FILE='md.inp',STATUS='old')
-      READ (200,*) damped_width, exclude_top, exclude_bot, exclude_left, exclude_right
-      READ (200,*) langevincoeff , LVScaleratio
-      READ (200,*) lcnhdampcoeff
-      READ (200,*) requiredtemp
-      READ (200,*) TIMestep1
-      READ (200,*) INDextimeh
-      READ (200,*) femstepmin
-      READ (200,*) nsteps
-      READ (200,*) thermostat%TYPE
-      READ (200,*) thermostat%DAMPING_MODE
-      READ (200,*) NUMmdrescale
-      READ (200,*) TWIndow
-      READ (200,*) NHRescale , MAXhtemp , HNVeflag
-      READ (200,*) maxmdsteps
+      READ (200,*) stadium_width, exclude_top, exclude_bot, exclude_left, exclude_right
+      READ (200,*) damp_coeff , damp_ratio
+      READ (200,*) lammps_temperature
+      READ (200,*) lammps_timestep
+      READ (200,*) fem_update_steps
+      READ (200,*) num_md_steps
+      READ (200,*) lammps_output_steps
+      READ (200,*) num_restart_steps
+      READ (200,*) num_initial_equil
+      READ (200,*) particle_velocity
+      READ (200,*) particle_radius
+      READ (200,*) particle_height
+      READ (200,*) particle_rotation
+      READ (200,*) impact_angle      
       CLOSE (200)
-
-
-
-
-
-!! Jun Song comments: output step, energy and temperature per steps
-!!(specified when writing to the file)
-      OPEN (5800,FILE='MDlog.CADD',STATUS='unknown')
-!! Jun Song comment: Initialization
-
-!	Write Data
-      WRITE (*,*) 'Base langevinCoeff: ' , langevincoeff
-      WRITE (*,*) 'LangevinCoeff scale ratio' , LVScaleratio
-!C--Jun Song: Care with Langevin Coefficient!!
-      WRITE (*,*) 'Langevin Coefficient' , langevincoeff*LVScaleratio
-      WRITE (6,99002) 'requiredTemp: ' , requiredtemp
-      WRITE (6,99002) 'timestep1: ' , TIMestep1
-      WRITE (6,99002) 'timestepH: ' , TIMestep1/INDextimeh
-      WRITE (6,99003) 'FEMStepMin: ' , femstepmin
-      WRITE (6,99003) 'Nsteps: ' , nsteps
-      WRITE (6,99002) 'atomic mass: ' , atommass
-      WRITE (6,99004) 'Thermostat: ' , thermostat%TYPE
-      WRITE (6,99004) 'Damping Mode: ' , thermostat%DAMPING_MODE
-      WRITE (*,*) '# T Rescale MD steps: ' , NUMmdrescale
-      WRITE (*,*) 'The windown for T rescale ' , TWIndow
-      WRITE (*,*) '**********For H atom only**********'
-      WRITE (*,*) 'H stablizer Steps' , NHRescale , 'for T>' , MAXhtemp
-      WRITE (*,*) 'Exclude H from Thermostat? ' , HNVeflag
-
+      
+      
       ! ---- Lammps is run for fem_call_back_steps for a total of total_lammps_steps
       ! ---- so that the main loop is only for lammps_loop
-      fem_call_back_steps = femstepmin
-      total_lammps_steps = nsteps
+      fem_call_back_steps = fem_update_steps
+      total_lammps_steps = num_md_steps
       lammps_loop = total_lammps_steps/fem_call_back_steps
       if (lammps_loop < 1) then
          call lammps_close(lmp)
@@ -288,12 +259,11 @@
 
       finishmd = .FALSE.
       newmd = .FALSE.
-      timestep = TIMestep1
+      timestep = lammps_timestep
 
-      SYStemp = requiredtemp
+      SYStemp = lammps_temperature
       PRINT * , 'MDSteps: ' , mdsteps
       IF ( mdsteps==0 ) newmd = .TRUE.
-!c	if (MDSteps .eq. MAXMDSteps) finishMD = .true.
 
       IF ( finishmd ) GOTO 99999
                                 ! Finish MD simulation
@@ -353,8 +323,8 @@
          solveFEM = .false.
          ifem = 0
 
-!!$      equilibrate for 10k steps
-         call lammps_command(lmp,'run 10000')
+!!$      equilibrate for a number of steps (set in md.inp)
+         write(command_line,*) "run ", num_initial_equil
 
 !!$      recalculate fem forces after equilibration
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
@@ -376,10 +346,10 @@
       indexmin = NUMnp
       indexmax = 1
 
-      femsteps = femstepmin
+      femsteps = fem_update_steps
       ifem = 0
       dislpass = .FALSE.
-      nstepsorig = nsteps
+      nstepsorig = num_md_steps
 
       DO istep = 1, lammps_loop
          ! ----- Run lammps one step at a time
@@ -451,7 +421,7 @@
 !!$                 &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
                IF ( dislpass ) PRINT * , 'Dislocation removed from atomistics'
 !!$	     if (npass > 1) then
-!!$		Nsteps = NstepsOrig*2
+!!$		num_md_steps = NstepsOrig*2
 !!$		npass = 0
 !!$	     end if
 

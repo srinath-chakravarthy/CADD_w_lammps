@@ -5,43 +5,41 @@
       IMPLICIT NONE
 !*--MOD_DISL_PARAMETERS6
  
-      LOGICAL NUMERICALPK
-      PARAMETER (NUMERICALPK=.TRUE.)
-      DOUBLE PRECISION PEIERLS
-      PARAMETER (PEIERLS=0.0D0)
+      LOGICAL,PARAMETER ::  NUMERICALPK = .TRUE.
+      DOUBLE PRECISION, PARAMETER ::  PEIERLS = 0.0D0
  
-      INTEGER MAX_DISL
-      PARAMETER (MAX_DISL=2000)
-!
-!>ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!>
-!> Common blocks
-!> /arrays_disl/:
-!>        burgers(3,max_disl) Burgers vectors
-!>        burg_length(max_disl) length of the inplane component of
-!>                               Burgers vectors
-!>        theta_e(max_disl) direction of the cut for the edge cmponent
-!>                           (w.r.t the Burgers vector ( [-P, Pi) )
-!>        theta_s(max_disl) direction of the cut fot the screw component
-!>                           ( w.r.t the X-axis, any walue )
-!>        r_disl(3, max_disl) current positions
-!>        r_old(3, max_disl) positions at last check for lost disl
-!>        pk_stress(3, max_disl) stress from acting on a dislocation
-!>        pk_force(2, max_disl) Peach-Koeller force acting on a
-!>                               dislocation
-!>        pk_f(max_disl)  Peach-Koeller force in the direction of the
-!>                            Burgers vector
-!>        elem_disl(max_disl) the number of an element containing a
-!>                            dislocation
-!>
-!> /contrl_disl/:
-!>        ndisl  number of dislocations
-!>        i_disl flag
-!>
-!>cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!23456789012345678901234567890123456789012345678901234567890123456789012
-!         1         2         3         4         5         6         7
-!
+      INTEGER, PARAMETER :: MAX_DISL = 5000
+
+!!$
+!!$>ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!!$>
+!!$> Common blocks
+!!$> /arrays_disl/:
+!!$>        burgers(3,max_disl) Burgers vectors
+!!$>        burg_length(max_disl) length of the inplane component of
+!!$>                               Burgers vectors
+!!$>        theta_e(max_disl) direction of the cut for the edge cmponent
+!!$>                           (w.r.t the Burgers vector ( [-P, Pi) )
+!!$>        theta_s(max_disl) direction of the cut fot the screw component
+!!$>                           ( w.r.t the X-axis, any walue )
+!!$>        r_disl(3, max_disl) current positions
+!!$>        r_old(3, max_disl) positions at last check for lost disl
+!!$>        pk_stress(3, max_disl) stress from acting on a dislocation
+!!$>        pk_force(2, max_disl) Peach-Koeller force acting on a
+!!$>                               dislocation
+!!$>        pk_f(max_disl)  Peach-Koeller force in the direction of the
+!!$>                            Burgers vector
+!!$>        elem_disl(max_disl) the number of an element containing a
+!!$>                            dislocation
+!!$>
+!!$> /contrl_disl/:
+!!$>        ndisl  number of dislocations
+!!$>        i_disl flag
+!!$>
+!!$>cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!!$23456789012345678901234567890123456789012345678901234567890123456789012
+!!$         1         2         3         4         5         6         7
+!!$
       INTEGER :: ndisl , i_disl , ndisl_dd(MAX_DISL)
       INTEGER :: elem_disl(MAX_DISL) , disl_index(MAX_DISL)
       DOUBLE PRECISION :: burgers(3,MAX_DISL) , burg_length(MAX_DISL)
@@ -50,9 +48,14 @@
       DOUBLE PRECISION :: pk_stress(3,MAX_DISL)
       DOUBLE PRECISION :: pk_force(2,MAX_DISL) , pk_f(MAX_DISL)
       DOUBLE PRECISION :: disl_range(2,MAX_DISL) , r_old(3,MAX_DISL)
+      DOUBLE PRECISION :: disl_residence(2,2,MAX_disl) !> @var containing both x and y coordinates for range of dislocation
+      DOUBLE PRECISION :: disl_line(3,MAX_DISL), disl_image(MAX_disl)
+      INTEGER :: disl_timer(MAX_DISL)
+      LOGICAL :: irmdisl(MAX_DISL)
+      
       LOGICAL MOVedisl1
       COMMON /KMVDIS/ MOVedisl1
- 
+      INTEGER, PARAMETER :: time_static = 20
  
       END MODULE MOD_DISL_PARAMETERS
  

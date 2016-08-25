@@ -9,6 +9,7 @@
 !*--DISL_SETUP9
       CHARACTER*80 error_message
       I_Disl = 0
+      irmdisl = .false.
 !
 !      DATA I_Disl/0/
 !
@@ -27,12 +28,37 @@
       END SUBROUTINE DISL_SETUP
 !*==disl_accept.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
  
+      SUBROUTINE DISL_REMOVE(idisl)
+      USE MOD_DISL_PARAMETERS
+      IMPLICIT NONE
+      integer :: idisl, j
+      !!> Shift all arrays using idisl position 
+      !!> Arays to update are burgers, burg_length, theta_e, theta_s
+      !!>   r_disl, pk_stress, pk_force, disl_range, r_old, disl_residence
+      do j = idisl + 1, ndisl
+         burgers(1:2,j-1) = burgers(1:2, j)
+         BURg_length(j-1) = burg_length(j)
+         theta_e(j-1) = theta_e(j)
+         theta_s(j-1) = theta_s(j)
+         r_disl(:,j-1) = r_disl(:,j)
+         pk_stress(:,j-1) = pk_stress(:,j)
+         pk_force(:,j-1) = pk_force(:,j)
+         disl_range(:,j-1) = disl_range(:,j)
+         r_old(:,j-1) = r_old(:,j)
+         disl_residence(:,:,j-1) = disl_residence(:,:,j)
+         irmdisl(j-1) = irmdisl(j)
+         disl_timer(j-1) = disl_timer(j)
+      end do
+      ndisl = ndisl -1
+!
+      END SUBROUTINE DISL_REMOVE
  
       SUBROUTINE DISL_ACCEPT(R0,Bv,Th_e,Th_s)
       USE MOD_DISL_PARAMETERS
       IMPLICIT NONE
 !*--DISL_ACCEPT33
       DOUBLE PRECISION R0(3) , Bv(3) , Th_e , Th_s , rr , RTOL
+      LOGICAL :: image_flag
       PARAMETER (RTOL=1.D0)
       INTEGER ishift
       LOGICAL moved
@@ -70,7 +96,11 @@
          ELEm_disl(NDIsl) = FE_LOCATE(R0,1)
 !
  
+	    
          DO i = 1 , 3
+	    if (R0(2) > -2.0d0) then
+		Elem_disl(Ndisl) = 0
+	    end if	
             R_Disl(i,NDIsl) = R0(i)
          ENDDO
          IF ( ELEm_disl(NDIsl)>0 ) THEN
@@ -107,10 +137,12 @@
      &                        +BURgers(2,NDIsl)*BURgers(2,NDIsl))
          THEta_e(NDIsl) = Th_e
          THEta_s(NDIsl) = Th_s
+         irmdisl(NDisl) = .false. 
+         disl_timer(NDISL) = 0
          PRINT * , 'In element: ' , ELEm_disl(NDIsl)
-         IF ( ELEm_disl(NDIsl)/=0 )&
-     &        CALL SLIPRANGE(Bv,R0,DISl_range(1,NDIsl),DISl_index(NDIsl)&
-     &        )
+         IF ( ELEm_disl(NDIsl)/=0 ) then 
+            CALL SLIPRANGE(Bv,R0,DISl_range(1,NDIsl),DISl_index(NDIsl), disl_residence(1:2,1:2,ndisl))
+         END IF
 !
       ELSE
          PRINT * , 'Lumping with disl # ' , NDIsl + N_Total - 4
@@ -128,8 +160,7 @@
  
  
  
-      SUBROUTINE DISL_PASS(R0,Rd,Burg,Th_e,Th_s,X,B,Is_relaxed,Numnp,&
-     &                     Subtract,Store,Idis_slip,Islp,S_dis)
+      SUBROUTINE DISL_PASS(R0,Rd,Burg,Th_e,Th_s,X,B,Is_relaxed,Numnp, Subtract,Store)
  
 !
 !     given location x and xd and the burg/theta of a dislocation,
@@ -137,37 +168,35 @@
 !     and return b=b-utilde(x)+utilde(xd)
 !     and add this new disl to the d.d. side.
 !
-      USE MOD_DD_SLIP
+!      USE MOD_DD_SLIP
       IMPLICIT NONE
 !*--DISL_PASS141
+      INTEGER :: disl_num !> @ number of dislocation accepted
       DOUBLE PRECISION R0(3) , Rd(3) , Burg(3) , B(3,*) , X(3,*)
       DOUBLE PRECISION Th_e , Th_s
-      INTEGER Is_relaxed(*) , Numnp
-      LOGICAL Subtract , Store , nucl
+      INTEGER Is_relaxed(numnp) , Numnp
+      LOGICAL Subtract , Store , nucl, image_flag
 !
       DOUBLE PRECISION u(3) , ud(3)
       INTEGER i , j
-      INTEGER , OPTIONAL :: Idis_slip
-      INTEGER , OPTIONAL :: Islp
-      DOUBLE PRECISION , OPTIONAL :: S_dis
+!!$      INTEGER , OPTIONAL :: Idis_slip
+!!$      INTEGER , OPTIONAL :: Islp
+!!$      DOUBLE PRECISION , OPTIONAL :: S_dis
 !
-      IF ( PRESENT(Islp) .AND. PRESENT(S_dis) ) THEN
-         nucl = .TRUE.
-      ELSE
-         nucl = .FALSE.
-      ENDIF
- 
-      PRINT * , 'Image Locations'
-      PRINT * , 'Subtract =' , R0(1:2)
-      PRINT * , 'Image = ' , Rd(1:2)
-!      if (store) call disl_accept(rd, burg, th_e, th_s)
-      IF ( Store ) THEN
-         IF ( nucl ) THEN
-            CALL NUCLEATE_ATOMISTIC_DISL(Islp,S_dis,Th_e,Th_s,Burg)
-         ELSE
-            PRINT * , 'Slip plane num and distance not given to pass'
-         ENDIF
-      ENDIF
+
+!!$      PRINT * , 'Image Locations'
+!!$      PRINT * , 'Subtract =' , R0(1:2)
+!!$      PRINT * , 'Image = ' , Rd(1:2)
+	if (store) then 
+	    call disl_accept(rd, burg, th_e, th_s, disl_num, image_flag)
+	end if
+!!$      IF ( Store ) THEN
+!!$         IF ( nucl ) THEN
+!!$            CALL NUCLEATE_ATOMISTIC_DISL(Islp,S_dis,Th_e,Th_s,Burg)
+!!$         ELSE
+!!$            PRINT * , 'Slip plane num and distance not given to pass'
+!!$         ENDIF
+!!$      ENDIF
       DO i = 1 , Numnp
          IF ( Is_relaxed(i)/=0 ) THEN
             IF ( Subtract ) THEN
@@ -184,9 +213,6 @@
          ENDIF
       ENDDO
 !     if (.not. store) then
-      IF ( PRESENT(Idis_slip) ) THEN
-         IF ( Idis_slip>0 ) CALL REMOVE_DISL_GLOBAL(Idis_slip)
-      ENDIF
 !     endif
       END SUBROUTINE DISL_PASS
 !*==fd_no_disl.spg  processed by SPAG 6.70Rc at 12:39 on 29 Oct 2015
@@ -264,17 +290,23 @@
 !
       DO i = 1 , NDIsl
          IF ( ELEm_disl(i)>0 ) THEN
+!!$	    call print_element(ELEm_disl(i), rhs)
             CALL FE_STRESS(ELEm_disl(i),Rhs,PK_stress(1,i))
+!!$            write(*,'(A,I7,6E15.6)') 'Stress on disl = ', i, pk_stress(1:3,i), pk_stress(1:3,i)/1.602176/1.d-5
             DO j = 1 , NDIsl
                IF ( j/=i ) THEN
-                  CALL DISL_S(R_Disl(1,j),BURgers(1,j),R_Disl(1,i),&
-     &                        s_out,THEta_s(j))
-                  DO k = 1 , 3
-!$$$  write(*,*) ' pk_stress', pk_stress(k,i)
-                     PK_stress(k,i) = PK_stress(k,i) + s_out(k)
-                  ENDDO
+                  if (elem_disl(j) > 0) then 
+!!$ 		     Only include contribution of actual dislocations that can move 
+!!$		     if (disl_timer(j) >= time_static) then 
+			CALL DISL_S(R_Disl(1,j),BURgers(1,j),R_Disl(1,i),s_out,THEta_s(j))
+			DO k = 1 , 3
+			    PK_stress(k,i) = PK_stress(k,i) + s_out(k)
+			ENDDO
+!!$		    end if
+		  end if
                ENDIF
             ENDDO
+!!$            write(*,'(A,I7,6E15.6)') 'Stress on disl total = ', i, pk_stress(1:3,i), pk_stress(1:3,i)/1.602176/1.d-5
          ENDIF
       ENDDO
  

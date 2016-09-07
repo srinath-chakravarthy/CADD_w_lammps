@@ -22,8 +22,9 @@
         DOUBLE PRECISION X , F , B
         DIMENSION Id(NDF,1) , X(NXDm,1) , Ix(NEN1,1) , F(NDF,1) , B(NDF,1)
         double precision, intent(in) :: xmin, xmax, ymin, ymax
-        double precision :: zmin, zmax
+        double precision :: zmin, zmax, yparticle
         double precision :: atom1_xmin, atom1_xmax, atom1_ymin, atom1_ymax
+        integer :: nsteps
         integer :: atomType
         logical :: top, bot, left, right, itop, ibot, ileft, iright
 
@@ -69,27 +70,43 @@
         end if
 
         
-	!!!! --- Assume units metal in lammps
-	lammps_timestep = lammps_timestep/1.0d-12
-	tstart = lammps_temperature
-	tstop = lammps_temperature
-	
-	!!! TODO add exclusion zones for stadium thermostat such as top surface, bottom surface, left, right
-	!!! --- mainly for impact problem
-	
-	if (damp_coeff > 0.0) then 
-	  damp_coeff = 1.0/(damp_coeff)
-	! TODO error handler 
-	end if
-	!!! Once again assuming metal units in lammps
-	damp_coeff = damp_coeff / 1.0d-12
-        
-        
-        !! TODO get zmin and zmax from mat file automatically
-        !!! --- For now assume single grain to be modified for multiple grains
-	!!zmax = 0.0d0
-	zmin = -grains(1)%dcell(3)/2.0
-	zmax = grains(1)%dcell(3)/2.0
+        !!!! --- Assume units metal in lammps
+        lammps_timestep = lammps_timestep/1.0d-12
+        tstart = lammps_temperature
+        tstop = lammps_temperature
+
+        !!! TODO add exclusion zones for stadium thermostat such as top surface, bottom surface, left, right
+        !!! --- mainly for impact problem
+
+        if (damp_coeff > 0.0) then 
+          damp_coeff = 1.0/(damp_coeff)
+        ! TODO error handler 
+        end if
+        !!! Once again assuming metal units in lammps
+        damp_coeff = damp_coeff / 1.0d-12
+            
+
+        if ( NGRains/=1 ) stop 'hardwired here for 1 grain for zmin/zmax'
+
+        !!-if material is hex, hardwire the z-spacing
+        !!-if material is fcc, read in z-spacing from grain data
+        if (nmaterials == 1) then 
+         if (material(1)%structure == 'hex') then 
+            !!> TODO get zmin and zmax from mat file automatically
+            zmin = 0.0d0
+            zmax = 2.9573845299d0
+         else 
+            !! TODO get zmin and zmax from mat file automatically
+            !! --- For now assume single grain to be modified for multiple grains
+            !!zmax = 0.0d0
+            zmax = grains(1)%dcell(3)/2.0
+            zmin = -grains(1)%dcell(3)/2.0
+         end if
+        end if
+
+        !!		JM: ***Must be careful to allow enough y space to add particle***
+        !!		JM: ***over free surface***        
+        yparticle = -ymin
         
         open(unit=1010, file='cadd_atoms.dat', status='UNKNOWN')
         natoms = 0
@@ -125,12 +142,21 @@
         stadium_ymin = atom1_ymin
         stadium_ymax = atom1_ymax
         
+
+        if (particle_radius > abs(atom1_xmax - atom1_xmin)/2.0) then
+         call error_handler('Particle radius must be smaller than substrate dimensions')
+        end if
+
+        if (particle_radius > abs(atom1_ymax - atom1_ymin)/2.0) then
+         call error_handler('Particle radius must be smaller than substrate dimensions')
+        end if
+        
         write(1010,*) "CADD input atoms"
         write(1010,*)
         write(1010, fmt='(I7,1X,A10)')  natoms, 'atoms'
-        write(1010, fmt='(I3,1X,A15)')  4, 'atom types'
+        write(1010, fmt='(I3,1X,A15)')  5, 'atom types'
         write(1010, fmt='(2(1X,F15.8),1X,A15)')  xmin, xmax, 'xlo xhi '
-        write(1010, fmt='(2(1X,F15.8),1X,A15)')  ymin, ymax, 'ylo yhi '
+        write(1010, fmt='(2(1X,F15.8),1X,A15)')  ymin, yparticle, 'ylo yhi '
         write(1010, fmt='(2(1X,F15.8),1X,A15)')  zmin, zmax, 'zlo zhi '
         write(1010, *)
         write(1010,*) 'Atoms'
@@ -159,6 +185,10 @@
               write(1010,fmt='(I7,1X,I3,1X,3(1X,F15.8))') n, atomType, X(1,i), X(2,i), X(3,i)
            end if
         end do
+
+        !!$ no stadium on free surface
+        stadium_ymax = 2.0d0*stadium_width
+        
         write(1010,*)
         close(1010)
       end subroutine write_lammps_data
@@ -194,7 +224,8 @@
         DIMENSION Id(NDF,1) , X(NXDm,1) , Ix(NEN1,1) , F(NDF,1) , B(NDF,1)
 !!$        double precision, intent(in) :: xmin, xmax, ymin, ymax, padwidth
 
-        double precision :: zmin, zmax
+        double precision :: zmin, zmax, theta, xoffset, Pi, ia_rad, zbound, pbc_tol
+        double precision :: xperiod, yperiod, zperiod, a0
         character(1024):: command_line
         integer :: iatom, i,j,k,l
 
@@ -202,11 +233,17 @@
         real (C_double), pointer :: xhi => NULL()
         real (C_double), pointer :: ylo => NULL()
         real (C_double), pointer :: yhi => NULL()
-
-        zmin = 0.5
-        zmax = 0.5
-
-
+        
+!!$ --- For now assume single grain/material to be modified for multiple grains
+        if (nmaterials == 1) then 
+         if (material(1)%structure == 'hex') then 
+            zperiod = grains(1)%dcell(3)
+         else 
+            xperiod = grains(1)%dcell(1)
+            yperiod = grains(1)%dcell(2)
+            zperiod = grains(1)%dcell(3)
+         end if
+        end if
 
 !!$        call lammps_open_no_mpi('lmg -log log.CADD', lmp)
 !!$     If replacing this entire subroutine by reading input file
@@ -217,15 +254,70 @@
         call lammps_command(lmp, 'units metal')
         call lammps_command(lmp, 'atom_style atomic')
         call lammps_command(lmp, 'dimension 3')
-        call lammps_command(lmp, 'boundary ss ss pp')
+        call lammps_command(lmp, 'boundary ss sm pp')
 !!$        call lammps_command(lmp, 'boundary ff ff pp')
         call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
 
+        !!JM: hcp lattice with short z cylinder region length gives a planar hex lattice
+        !!JM: with a little hack using the burger's vector as the lattice constant a
+        if (nmaterials == 1) then 
+            a0 = material(1)%a0
+            
+            if (material(1)%structure == 'hex') then 
+                !---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+                write(command_line,'(A,1F15.5)') 'lattice hex ', a0
+                call lammps_command(lmp, command_line)
+                !call lammps_command(lmp, 'lattice hex 2.85105')
+                else 
+                !!call lammps_command(lmp, 'lattice fcc 4.032')
+                !!write(command_line,'(A,1F15.5)') 'lattice hex ', a0
+                !!call lammps_command(lmp, command_line)
+                !!FCC orientation to prevent screw dislocations
+                !!call lammps_command(lmp, 'lattice fcc 4.032 orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0')
+                !!call lammps_command(lmp, 'lattice fcc 4.032 orient x 1 -1 0 orient y 1 1 1 orient z -1 -1 2')
+                !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 -1 0 orient y 1 1 1 orient z -1 -1 2 spacing ', &
+                !!   xperiod, yperiod, zperiod
+                print *, "Lattice constant in lammps = ", a0
+                !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0 spacing ', &
+                !!   xperiod, yperiod, zperiod
+                write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
+                   xperiod, yperiod, zperiod
+                call lammps_command(lmp, command_line)
+
+            end if
+        end if
         
         call lammps_command(lmp, 'read_data cadd_atoms.dat')
 
+        !!!!!!!!!!!!!FIX THIS!!!!!!!!!!!!!!!!
+        !store number of zperiods from CADD into lammps variable 
+        !to be used when creating the particle
+        print*, 'numperiodz is: ', NUMperiodz
+        !write(command_line,'(A,1F15.3)') 'variable zperiods equal ', NUMperiodz
+        write(command_line,'(A,1F15.3)') 'variable zperiods equal 1.0'
+        call lammps_command(lmp,command_line)
+        
+        !for no particle impact angle, differentiate hex vs. fcc
+        if (nmaterials == 1) then 
+	      if (material(1)%structure == 'hex') then 
+            write(command_line,'(A,2F15.3,A)') 'region 1 cylinder z 0.0 ', &
+               particle_height + particle_radius, particle_radius, ' 0.0 0.1 units box'
+            call lammps_command(lmp, command_line)
+	      else 
+            !!!!!!FIGURE OUT THIS 2.0 vs 1.9 tolerance issue to line up CADD and LAMMPS lattices!!
+	        write(command_line,'(A,4F15.3,A)') 'region 1 cylinder z 0.0 ', &
+               particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/1.9, grains(1)%dcell(3)/2.0, ' units box'
+            call lammps_command(lmp, command_line)
+          end if
+        end if
+      
+        !! --- creating particle atoms, type 5---
+        call lammps_command(lmp, 'create_atoms 5 region 1')   
+        call lammps_command(lmp, 'group particle_atoms type 5')
+
         ! --- Create groups of atoms for fixes and computes ----
-        call lammps_command(lmp, "group md_atoms type 1 3 4")
+        call lammps_command(lmp, "group md_atoms type 1 3 4 5")
+        call lammps_command(lmp, "group sub_atoms type 1 3 4")
         call lammps_command(lmp, "group free_atoms type 1")
         call lammps_command(lmp, "group pad_atoms type 2")
         call lammps_command(lmp, "group interface_atoms type 3")
@@ -234,57 +326,57 @@
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
 !!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
-        call lammps_command(lmp, "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al")
+        call lammps_command(lmp, "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al Al")
 
         call lammps_command(lmp, "neighbor 0.1 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
         ! ---------- Various Fixes ----------------------------------------------
         write(command_line,*) "variable mytemp equal", lammps_temperature
-        call lammps_command(lmp, command_line)
-        !!$call lammps_command(lmp, "variable mytemp equal 500.0")
-        call lammps_command(lmp, "velocity md_atoms create $(2.0*v_mytemp) 426789 dist uniform rot yes mom yes")
+        call lammps_command(lmp, command_line) 
+
+        !!--- initialize system temperature to 2*desired (NVE ensembles << melting temp)
         if (nmaterials == 1) then 
-	  if (material(1)%structure == 'hex') then 
-	  ! ---- Set Z-velocity to zero for 2d hex problem
-	    call lammps_command(lmp, "velocity md_atoms set NULL NULL 0.0 units box")
-	  end if
-	end if
-	    
-	  
-
-	! ---- Temperature fixes -----------------------------------------------------------
-	
-!!$        call lammps_command(lmp, "fix fix_temp free_atoms nvt temp 1.0 1.0 100.0")
-
-
-	! --- Todo put in langevin in the input file to say that there is a stadium ....
-	call lammps_command(lmp, "fix fix_integ md_atoms nve")
+         if (material(1)%structure == 'hex') then 
+            call lammps_command(lmp, "velocity sub_atoms create $(2.0*v_mytemp) 829863 dist uniform mom yes rot yes")
+            call lammps_command(lmp, "velocity particle_atoms create $(2.0*v_mytemp) 163103 dist uniform mom yes rot yes")
+            !!--- If hex material, then set z velocity to 0
+            call lammps_command(lmp, "velocity sub_atoms set NULL NULL 0.0 units box")
+            call lammps_command(lmp, "velocity particle_atoms set NULL NULL 0.0 units box")
+         else 
+            call lammps_command(lmp, "velocity sub_atoms create $(2.0*v_mytemp) 426789 dist uniform mom yes rot yes")
+            !!call lammps_command(lmp, "velocity particle_atoms create $(2.0*v_mytemp) 849823 dist uniform mom yes rot yes")
+         end if
+        end if
+        
+        !! --- equilibrate temperature in two NVT ensembles (1 for particle, 1 for substrate)
+        call lammps_command(lmp, "fix int_sub sub_atoms nve")
+        call lammps_command(lmp, "fix int_part particle_atoms nve")
     
-!!$	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
-!!$	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
-!!$	call lammps_command(lmp, command_line)
-    
-    write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
-       tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
-       -100000.00, 1000000.00, stadium_width
-    call lammps_command(lmp, command_line)
+        write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+           tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
+           -1000.00, 1000.00, stadium_width
+        call lammps_command(lmp, command_line)
 
-	! ----------------------------------------------------------------------------------
+        ! ----------------------------------------------------------------------------------
 
-	! ---- Temperature Computes and temperature variance for testing  -------------------------------------
-	if (nmaterials == 1) then 
-	  if (material(1)%structure == 'hex') then 
-	    ! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
-        call lammps_command(lmp, "compute md_temp md_atoms temp/partial 1 1 0")
-	    call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
-	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
-	  else 
-        call lammps_command(lmp, "compute md_temp md_atoms temp/com")
-	    call lammps_command(lmp, "compute free_temp free_atoms temp/com")
-	    call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
-	  end if 
-	end if
+        ! ---- Temperature Computes and temperature variance for testing  -------------------------------------
+        if (nmaterials == 1) then 
+          if (material(1)%structure == 'hex') then 
+            ! ---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+            call lammps_command(lmp, "compute md_temp md_atoms temp/partial 1 1 0")
+            call lammps_command(lmp, "compute sub_temp sub_atoms temp/partial 1 1 0")
+            call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
+            call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
+            call lammps_command(lmp, "compute part_temp particle_atoms temp/partial 1 1 0")
+          else 
+            call lammps_command(lmp, "compute md_temp md_atoms temp/com")
+            call lammps_command(lmp, "compute sub_temp sub_atoms temp/com")
+            call lammps_command(lmp, "compute free_temp free_atoms temp/com")
+            call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
+            call lammps_command(lmp, "compute part_temp particle_atoms temp/com")
+          end if 
+        end if
         
         ! ---- average the variance of the temperature 
 !!$        call lammps_command(lmp, "fix free_variance free_atoms ave/time 1 1000 1000 v_delt_free ave running")
@@ -315,7 +407,7 @@
 
         ! ------------- Various computes -------------------------------
         call lammps_command(lmp, "thermo 1")
-        call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_pe c_ke vol")
+        call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_part_temp c_sub_temp c_pe c_ke vol")
 
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")

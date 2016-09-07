@@ -123,7 +123,7 @@
       IMPLICIT NONE
 !*--DOSTEPS1325
       INTEGER MAXATOMS
-      PARAMETER (MAXATOMS=100000)
+      PARAMETER (MAXATOMS=300000)
 !
       INTEGER N , Ix(*) , Atomid(NDF,*) , Iprint , Itx(*) , Rseed , &
      &        numdis , numh
@@ -325,6 +325,13 @@
 
 !!$      equilibrate for a number of steps (set in md.inp)
          write(command_line,*) "run ", num_initial_equil
+         call lammps_command(lmp, command_line)
+!!$         call lammps_command(lmp, "unfix fix_integ")
+         call lammps_command(lmp, "unfix int_sub")
+         call lammps_command(lmp, "unfix int_part")
+         call lammps_command(lmp, "fix int_md md_atoms nve")
+         write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
+         call lammps_command(lmp, command_line)  
 
 !!$      recalculate fem forces after equilibration
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
@@ -334,7 +341,7 @@
 
          call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
       
-	  ENDIF
+      ENDIF
 !     end of if new md loop
 !C--New MD initialization ends
 
@@ -385,6 +392,8 @@
             end if
 
             ! --- Perform Velocity Verlet using LAMMPS
+            print*, 'Perform Velocity Verlet using lammps command_line: '
+            print*, command_line
             call lammps_command(lmp, command_line)
 
             ! ---- Updates Atom Displacements and forces
@@ -401,36 +410,40 @@
 !!$              for testing lammps is run for fem_call_back_steps and then dislocation
 !!$              passing is checked.
 !!$         Provided facility to do this every step as well
-            IF ( dislpass ) THEN
-               filename = 'out/atom_pass.cfg'
-               CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-               CALL DUMP_ATOM(Atomcoord,Atomdispl,AtomForce,logic)
-               CLOSE (logic)
+                       
+                dislpass = .FALSE.
 
-               filename = 'out/atom_pass.vtk'
-               CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
-               CALL DUMP_MESH(Atomcoord,Atomdispl,Ix,logic)
-               CLOSE (logic)
-
-            ENDIF
-            dislpass = .FALSE.
-!!$
-!!$         hard coded off JM
-!!$            IF ( DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,Ix,&
-!!$                 &        Atomcoord,Atomdispl,Itx,ISRelaxed,NUMnp,NDF,NXDm,NUMel,&
-!!$                 &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
-               IF ( dislpass ) PRINT * , 'Dislocation removed from atomistics'
+                IF ( DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,Ix,&
+                     &        Atomcoord,Atomdispl,Itx,ISRelaxed,NUMnp,NDF,NXDm,NUMel,&
+                     &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
+                   IF ( dislpass ) PRINT * , 'Dislocation removed from atomistics'
 !!$	     if (npass > 1) then
-!!$		num_md_steps = NstepsOrig*2
+!!$		Nsteps = NstepsOrig*2
 !!$		npass = 0
 !!$	     end if
 
-               WRITE (*,*) 'Disl checked!'
-!!$               mdsteps = mdsteps + 1
-               WRITE (*,*) 'Disl checked by rank' , RANk
-               ndis_checked = ndis_checked + 1
-!!$            END IF
-            nnsteps = nnsteps + 1
+                   WRITE (*,*) 'Disl checked!'
+
+                   WRITE (*,*) 'Disl checked by rank' , RANk
+
+                   ndis_checked = ndis_checked + 1
+                END IF
+
+                IF ( dislpass ) THEN
+                   filename = 'out/atom_pass.cfg'
+                   CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+                   CALL DUMP_ATOM(Atomcoord,Atomdispl,AtomForce,logic)
+                   CLOSE (logic)
+
+                   filename = 'out/atom_pass.vtk'
+                   CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
+                   CALL DUMP_MESH(Atomcoord,Atomdispl,Ix,logic)
+                   CLOSE (logic)
+
+                ENDIF
+
+                nnsteps = nnsteps + 1
+
 !!$	  if (Moved) then
 !!$       Output the new_atom config after moving atom_displacements
 !!$	     filename='out/moved_atoms.cfg'
@@ -472,6 +485,7 @@
                   ENDIF
                ENDIF
             ENDIF
+
 !!$            if (ndisl > 4) then
 !!$               if (mod(iStep,10) .eq. 0) then
 !!$                  filename='out/atom_pass2.cfg'
@@ -482,8 +496,8 @@
 !!$            end if
 
 
-			!CHECK THAT THIS IS WORKING
-			!Check the update to the B array inside dislocation 
+            !CHECK THAT THIS IS WORKING
+            !Check the update to the B array inside dislocation 
 !            update_all = .true.
 !            update_pad = .true. 
 !            call update_lammps_coords(AtomCoord, AtomDispl,update_all, update_pad, lmp)

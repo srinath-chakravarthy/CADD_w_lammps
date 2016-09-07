@@ -27,7 +27,7 @@
 !     common declarations
       COMMON /DEBUGGER/ DEBug
       LOGICAL DEBug
-      DOUBLE PRECISION tol, smalltol
+      DOUBLE PRECISION tol
 
 !     local variables
       LOGICAL n1 , n2 , n3 , m1 , m2 , m3 , usedetectionband
@@ -42,7 +42,6 @@
      &                 yyminorig , delx , dely , xx , yy , mindb , &
      &                 rcutmesh , DIST2 , large
       DATA tol/1.D-6/
-	  DATA smalltol/1.D-1/
       LOGICAL placenode , top , bot , left , right , mirror
 
       TYPE REGION
@@ -53,7 +52,7 @@
 
       INTEGER temp_slip , ii , jj , islp , iii
       DOUBLE PRECISION xslip_start , xslip_end , yslip_start , yslip_end
-      DOUBLE PRECISION slip_angle(3) , xxx1 , yyy1 , dxslip , dyslip, midxAtom, midyAtom
+      DOUBLE PRECISION slip_angle(3) , xxx1 , yyy1 , dxslip , dyslip
       DOUBLE PRECISION xslp1 , xendslp1 , zbqlu01 , rr1 , lnuc , sn , smax
       INTEGER*4 timearray(3)
       DOUBLE PRECISION :: aangle
@@ -142,9 +141,7 @@
          xx = i*dx
          IF ( ABS(xx)<=xmax(nxregions) ) THEN
 !
-!           JM: Freesurf command
-!           DO j = -numy , 0
-            DO j = -numy , numy
+            DO j = -numy , 0
 !
                yy = j*dy
                IF ( ABS(yy)<=ymax(nyregions) ) THEN
@@ -238,9 +235,35 @@
          xxmax = MAX(X(1,i),xxmax)
          xxmin = MIN(X(1,i),xxmin)
          yymax = MAX(X(2,i),yymax)
-         yymin = MIN(X(2,i),yymin)	 
-		 
+         yymin = MIN(X(2,i),yymin)
+!                print *, i, x(1,i), x(2,i)
+         IF ( X(1,i)==0.0D0 ) THEN
+            IF ( X(2,i)==0.0D0 ) temp_slip = i
+         ENDIF
       ENDDO
+
+      xslip_start = X(1,temp_slip+1)
+      yslip_start = (X(2,temp_slip)+X(2,temp_slip+1))/2.D0
+
+      xxx1 = X(1,temp_slip+1) - X(1,temp_slip)
+      yyy1 = X(2,temp_slip+1) - X(2,temp_slip)
+      slip_angle(1) = ATAN2(yyy1,xxx1)
+      dxslip = ABS(xxx1)*2.D0
+      dyslip = ABS(yyy1)
+      PRINT * , xxx1 , yyy1 , slip_angle(1)
+      PRINT * , 'Slip plane start and end' , temp_slip
+      PRINT * , 'x_start' , xslip_start , X(1,temp_slip+1)
+      PRINT * , 'y_start' , yslip_start
+
+
+      xxx1 = X(1,temp_slip-1) - X(1,temp_slip)
+      yyy1 = ABS(X(2,temp_slip-1)-X(2,temp_slip))
+      slip_angle(2) = ATAN2(yyy1,xxx1)
+      PRINT * , xxx1 , yyy1 , slip_angle(2)
+      slip_angle(3) = 0.0D0
+      PRINT * , 'DX' , dxslip
+      PRINT * , 'DY' , dyslip
+      slip_angle(3) = 0.0D0
 
 
       simulationcell%XMIN = xxmin
@@ -314,7 +337,7 @@
       simulationcell%XMIN = simulationcell%XMIN + 10.D0
       simulationcell%xmax = simulationcell%xmax - 10.D0
       simulationcell%YMIN = simulationcell%YMIN + 10.D0
-      simulationcell%ymax = simulationcell%ymax - 10.D0
+      simulationcell%ymax = simulationcell%ymax - 0.1D0
 
       PRINT * , 'Detecting the outer cell boundary' , NUMnp
       PRINT * , simulationcell%XMIN , simulationcell%xmax
@@ -331,7 +354,7 @@
 !     store all boundary points, but put crack faces at the beginning of
 !     elist.  While you are at it, apply the b.c.s
 
-         IF ( top .OR. bot .OR. right .OR. left ) THEN
+         IF ( bot .OR. right .OR. left ) THEN
             NCE = NCE + 1
             IF ( NCE>NCEmax ) THEN
                IF ( NCE>NCEmax ) CALL INCREASEELIST(100)
@@ -339,7 +362,7 @@
             ELIst(1,NCE) = i
 
 ! apply the b.c's
-            IF ( top .OR. bot .OR. right .OR. left ) THEN
+            IF ( bot .OR. right .OR. left ) THEN
 !$$$            if (bot) then
                Id(1,i) = 1
                Id(2,i) = 1
@@ -373,8 +396,8 @@
             ENDIF
             ELIst(1,NCE) = i
             IF ( X(1,i)>-3.0*dx .AND. X(1,i)<3.0*dx ) THEN
-!$$               Id(2,i) = 1
-!$$               PRINT * , "BC's on atom" , i
+!!$               Id(2,i) = 1
+!!$               PRINT * , "BC's on atom" , i
             ENDIF
          ENDIF
 !$$$         if (top) then
@@ -415,11 +438,12 @@
       PRINT * , 'Elist ' , NCE , ELIst(1,NCE) , ELIst(2,NCE)
 
       PRINT * , 'No. of outer boundary edges = ' , NCE
-      
-      !Unconstrained triangulation of a convex hull
-      !JM
+
+!      NCB = NCE
+
       NCE = 0
-      NCB = NCE
+      NCB = 0
+      ELIST = 0
 
 !     Triangulate, sets all elements to material 1 for this mesh
       PRINT * , 'Triangulating'
@@ -442,120 +466,6 @@
       innerregion%YMIN = -ymax(1)
       innerregion%ymax = ymax(1)/dwfactory
       CALL FINDATOMREGIONSIZE(X,dx,dy,tol,innerregion,atomregion)
-	  
-	  print*,'dx', dx
-	  print*,'dy', dy
-	  
-	  midxAtom = (INT((atomregion%xmax+atomregion%XMIN)/(2.*dx)))*dx
-	  
-	  !x placement is offset for even and odd y rows
-	  if (MOD(ABS(INT((atomregion%ymax+atomregion%YMIN)/dy/2)),2) == 0) then
-	    print*,'even'
-		midyAtom = (INT((atomregion%ymax+atomregion%YMIN)/dy/2))*dy
-	  endif
-	  
-	  if (MOD(ABS(INT((atomregion%ymax+atomregion%YMIN)/dy/2)),2) /= 0) then
-	    print*,'odd'
-		midyAtom = (INT((atomregion%ymax+atomregion%YMIN)/dy/2)+1)*dy
-	  endif	  
-	  
-	  print*,'midxAtom', midxAtom
-	  print*,'midyAtom', midyAtom
-	  
-	  print*,'(midxAtom + smalltol)', (midxAtom + smalltol)
-	  print*,'(midxAtom - smalltol)', (midxAtom - smalltol)
-	  print*,'(midyAtom + smalltol)', (midyAtom + smalltol)
-	  print*,'(midyAtom - smalltol)', (midyAtom - smalltol)
-	  
-      DO i = 1 , NUMnp
-		 
-!         IF ( X(1,i)==0.0D0 ) THEN
-!            IF ( X(2,i)==0.0D0 ) THEN 
-!			   temp_slip = i
-!			   print*,'temp_slip', temp_slip
-!			ENDIF
-!         ENDIF
-
-	     !print*,'X(1,i)', X(1,i)
-	     !print*,'X(2,i)', X(2,i)		
-
-         IF ( X(1,i) < 1.0 .AND. X(1,i) > -1.0 ) THEN
-		    !print*,'X(1,i)', X(1,i)
-            IF ( X(2,i) >  -35.0 .AND. X(2,i) <  -30.0) THEN 
-			   !temp_slip = i
-			   print*,'X(1,i)', X(1,i)
-			   print*,'X(2,i)', X(2,i)
-			   temp_slip = i
-			   print*,'temp_slip', temp_slip
-			ENDIF
-         ENDIF		 
-
-         IF ( X(1,i) < (midxAtom + smalltol) .AND. &
-     &		 X(1,i) > (midxAtom - smalltol) ) THEN
-	        !print*,'X(1,i)', X(1,i)
-            IF ( (X(2,i) < (midyAtom + smalltol)) &
-     &      .AND. (X(2,i) > (midxAtom - smalltol)) ) THEN 
-			   temp_slip = i
-			   print*,'temp_slip', temp_slip
-			ENDIF
-         ENDIF
-		 
-      ENDDO
-	  
-	  print*,'check after smalltol'
-	  
-	  xslip_start = X(1,temp_slip+1)
-      yslip_start = (X(2,temp_slip)+X(2,temp_slip+1))/2.D0
-	  
-	  print*,'xslip_start', xslip_start
-	  print*,'yslip_start', yslip_start
-	  
-	  print*,'-----------'
-	  
-	  print*,'X(1,temp_slip+1)', X(1,temp_slip+1)
-	  print*,'X(1,temp_slip)', X(1,temp_slip)
-	  
-	  print*,'X(2,temp_slip+1)', X(2,temp_slip+1)
-	  print*,'X(2,temp_slip)', X(2,temp_slip)
-
-      xxx1 = X(1,temp_slip+1) - X(1,temp_slip)
-      yyy1 = X(2,temp_slip+1) - X(2,temp_slip)
-	  
-	  print*,'xxx1', xxx1
-	  print*, 'yyy1', yyy1
-	  
-      slip_angle(1) = ATAN2(yyy1,xxx1)
-	  
-	  print*,'slip_angle(1)', slip_angle(1)
-	  
-      dxslip = ABS(xxx1)*2.D0
-      dyslip = ABS(yyy1)
-	  
-	  PRINT * , 'DX' , dxslip
-      PRINT * , 'DY' , dyslip
-	  
-	  print*,'-----------'
-	  
-!      PRINT * , xxx1 , yyy1 , slip_angle(1)
-!      PRINT * , 'Slip plane start and end' , temp_slip
-!      PRINT * , 'x_start' , xslip_start , X(1,temp_slip+1)
-!      PRINT * , 'y_start' , yslip_start
-
-	  print*,'X(1,temp_slip-1)', X(1,temp_slip-1)
-	  print*,'X(1,temp_slip)', X(1,temp_slip)
-	  
-	  print*,'X(2,temp_slip-1)', X(2,temp_slip-1)
-	  print*,'X(2,temp_slip)', X(2,temp_slip)
-
-      xxx1 = X(1,temp_slip-1) - X(1,temp_slip)
-      yyy1 = ABS(X(2,temp_slip-1)-X(2,temp_slip))
-	  
-	  print*,'xxx1', xxx1
-	  print*, 'yyy1', yyy1
-	  
-      slip_angle(2) = ATAN2(yyy1,xxx1)
-      PRINT * , xxx1 , yyy1 , slip_angle(2)
-      slip_angle(3) = 0.0D0
 
 
       DO i = 1 , NUMel
@@ -601,7 +511,7 @@
          IF ( (n1 .AND. n2 .AND. n3) .AND. (m1 .AND. m2 .AND. m3) )&
      &        Ix(NEN1,i) = 0
       ENDDO
-     
+
 
 
 
@@ -618,8 +528,7 @@
       numy = INT(ymax(2)/dy) + 1
       dwnumx = INT(xmax(2)/dwfactorx/dx) + 1
       dwnumy = INT(ymax(2)/dwfactory/dy) + 1
-!      JM: Freesurf command
-!      dwnumy = 0
+      dwnumy = 0
       DO i = -dwnumx , numx
          xx = i*dx
          DO j = -numy , dwnumy
@@ -723,9 +632,8 @@
       WRITE (6,*) 'rcutmesh = ' , rcutmesh
       NUMnpp1 = -1
 
-!!$      call for freesurf
-!!$      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), 0.0)
-      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), ymax(1) + pad_width+10.0)
+
+      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), 0.0)
 
 !     Create a detection band
 !     Identify a path, defined by a closed polygon, ccw around the
@@ -735,9 +643,10 @@
 !     region.
 
 
-      usedetectionband = .FALSE.
+      usedetectionband = .TRUE.
       IF ( .NOT.usedetectionband ) THEN
          NDBpoly = 0
+!         GOTO 100
       ENDIF
 
       PRINT * , 'Using a detection band'
@@ -755,23 +664,23 @@
 !      nr4 = INT((ABS(detectionband%ymax)-mindb)/dy) + 1
 
 !      NDBpoly = MAX(nr1,nr2,nr3,nr4) + 1
-      !JM no detection band Freesurf
-      NDBpoly = 0 
+      NDBpoly = 2
       PRINT * , 'Detection band' , nr1 , nr2 , nr3 , nr4 , NDBpoly
       CALL ALLOCATE_DB
 
       DO i = 1 , NDBpoly
-!$$$         detectionband%XMIN = atomregion%XMIN + rcutmesh + (i-1)*dx
+         detectionband%XMIN = atomregion%XMIN + rcutmesh + (i-1)*dx + 5.0
 !$$$         detectionBand%xmax = atomRegion%xmax - 2.0*rcutmesh
 !$$$         detectionBand%ymin = atomRegion%ymin + 2.0*rcutmesh
 !$$$         detectionBand%ymax = atomRegion%ymax - 2.0*rcutmesh
 
-         detectionband%XMIN = atomregion%XMIN + rcutmesh + (i-1)*dx
-         detectionband%xmax = atomregion%xmax - rcutmesh - (i-1)*dx
-         detectionband%YMIN = atomregion%YMIN + rcutmesh + (i-1)*dy
-         detectionband%ymax = atomregion%ymax - rcutmesh - (i-1)*dy
+         detectionband%xmax = atomregion%xmax - rcutmesh - (i-1)*dx - 5.0
+         detectionband%YMIN = atomregion%YMIN + rcutmesh + (i-1)*dy + 5.0
+!$$$         detectionband%ymax = atomregion%ymax - rcutmesh - (i-1)*dy - 30.0
+         
+!$$$     to reach all the way up to the free surface
+         detectionband%ymax = atomregion%ymax + 10.0
 
-!$$$		 detectionband%ymax = 0.0
 !$$$
 !$$$         detectionBand%xmax = min( minDb+(i-1)*dx
 !$$$     $                            ,atomRegion%xmax - rcutmesh)
@@ -782,15 +691,15 @@
 
 
          DBPoly(1,1,i) = detectionband%XMIN
-         DBPoly(2,1,i) = detectionband%YMIN
+         DBPoly(2,1,i) = detectionband%YMAX
 
-         DBPoly(1,2,i) = detectionband%xmax
+         DBPoly(1,2,i) = detectionband%xmin
          DBPoly(2,2,i) = detectionband%YMIN
 
          DBPoly(1,3,i) = detectionband%xmax
-         DBPoly(2,3,i) = detectionband%ymax
+         DBPoly(2,3,i) = detectionband%ymin
 
-         DBPoly(1,4,i) = detectionband%XMIN
+         DBPoly(1,4,i) = detectionband%XMAX
          DBPoly(2,4,i) = detectionband%ymax
 
 !$$$     For this particular detection band the first layer is closest
@@ -991,11 +900,7 @@
 
       xmax = xmax - Dx
       xmin = xmin + Dx
-	  
-	  !JM: for Freesurf, no need to exclude 'interface' atoms
       ymax = ymax - Dy
-	  !ymax = ymax
-	  
       ymin = ymin + Dy
 
       Atomregion%xmin = xmin

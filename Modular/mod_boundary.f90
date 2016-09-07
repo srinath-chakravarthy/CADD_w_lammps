@@ -28,7 +28,7 @@
       INTEGER , POINTER :: elist(:,:)
       DOUBLE PRECISION , ALLOCATABLE :: dbpoly(:,:,:)
       LOGICAL , ALLOCATABLE :: dbbound(:,:) , dbboundnear(:)
-      INTEGER , PARAMETER :: DBNMAX = 300
+      INTEGER , PARAMETER :: DBNMAX = 1800
  
       CONTAINS
 !**

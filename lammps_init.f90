@@ -278,10 +278,10 @@
                 !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 -1 0 orient y 1 1 1 orient z -1 -1 2 spacing ', &
                 !!   xperiod, yperiod, zperiod
                 print *, "Lattice constant in lammps = ", a0
-                !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0 spacing ', &
-                !!   xperiod, yperiod, zperiod
-                write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
+                write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0 spacing ', &
                    xperiod, yperiod, zperiod
+                !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
+                !!   xperiod, yperiod, zperiod
                 call lammps_command(lmp, command_line)
 
             end if

@@ -404,6 +404,160 @@
             examined(j,IMAp(i)) = .FALSE.
          ENDDO
       ENDDO
+!$$$c     Qu's modification begins
+!$$$c     check if the detected slip is related to thermal fluctuation
+!$$$      if(ndisl.gt.0) then
+!$$$         do i=1,nslip
+!$$$
+!$$$c     Dw's mod begin
+!$$$            if(examined(iburg(i),imap(i))) then
+!$$$               ndisl=ndisl-1
+!$$$               iburg(i)=nburger
+!$$$               goto 21
+!$$$            endif
+!$$$c$$$            print *, 'XXXX Dislocations in Atomistic = ', ndisl
+!$$$
+!$$$c     Dw's mod end
+!$$$
+!$$$            if(iburg(i).ne.nburger) then
+!$$$               call checkburgers(epsloc(1:3,1:3,i),possible(1:nburge
+!$$$     &              ,iburg(i),x,b,ix,imap(i),enorm)
+!$$$c     find the neighbor element of the detection band element i
+!$$$               neleNear=itx(abs(ix(nen1,imap(i))),imap(i))
+!$$$c--   pre-process the element (compute amat)
+!$$$c
+!$$$               if(neleNear.ne.0) then
+!$$$                  possibleNext(1:nburger)=possible(1:nburger,i)
+!$$$                  k=abs(ix(nen1,imap(i)))
+!$$$c     vector from centroid to midside of edge k
+!$$$                  kp1=mod(k,3)+1
+!$$$                  kp2=mod(kp1,3)+1
+!$$$                  k=ix(k,imap(i))
+!$$$                  kp1=ix(kp1,imap(i))
+!$$$                  kp2=ix(kp2,imap(i))
+!$$$                  cvec=(x(1:2,k)+x(1:2,kp1)-2*x(1:2,kp2))/6.d0
+!$$$                  cross=normal(1,iburg(i))*cvec(2)-normal(2,iburg(i)
+!$$$     $                 *cvec(1)
+!$$$                  if(cross.lt.0.d0) then
+!$$$                     bvec=-burg(1:3,iburg(i))
+!$$$                  else
+!$$$                     bvec=burg(1:3,iburg(i))
+!$$$                  endif
+!$$$c
+!$$$                  do j=1,3
+!$$$                     if(itx(j,neleNear).eq.imap(i))then
+!$$$                        nside=j
+!$$$                     endif
+!$$$                  enddo
+!$$$                  nsideRight=mod(nside,3)+1
+!$$$                  nsideLeft=mod(nsideRight,3)+1
+!$$$
+!$$$                  n1=ix(nside,neleNear)
+!$$$                  n2=ix(nsideRight,neleNear)
+!$$$                  n3=ix(nsideLeft,neleNear)
+!$$$c     find the coord of the mid point of nside
+!$$$                  coordSide(1:2)=(x(1:2,n1)+x(1:2,n2))/2.d0
+!$$$c     find the coord of the mid point of nsideRight
+!$$$                  coordRight(1:2)=(x(1:2,n2)+x(1:2,n3))/2.d0
+!$$$c     find the coord of the mid point of nsideLeft
+!$$$                  coordLeft(1:2)=(x(1:2,n3)+x(1:2,n1))/2.d0
+!$$$c
+!$$$c     find vector from mid isideRight to mid j
+!$$$                  vecRight(1:2)=coordRight(1:2)-coordSide(1:2)
+!$$$                  vecLength=dot_product(vecRight(1:2),vecRight(1:2))
+!$$$                  vecRight(1:2)=vecRight(1:2)/vecLength
+!$$$c     find vector from mid isideLeft to mid j
+!$$$                  vecLeft(1:2)=coordLeft(1:2)-coordSide(1:2)
+!$$$                  vecLength=dot_product(vecLeft(1:2),vecLeft(1:2))
+!$$$                  vecLeft(1:2)=vecLeft(1:2)/vecLength
+!$$$
+!$$$                  dotRight=dot_product(bvec(1:2),vecRight(1:2))
+!$$$                  dotLeft=dot_product(bvec(1:2),vecLeft(1:2))
+!$$$                  if(dotRight.gt.dotLeft)then
+!$$$                     nsideNext=nsideRight
+!$$$                  else
+!$$$                     nsideNext=nsideLeft
+!$$$                  endif
+!$$$                  neleNext=neleNear
+!$$$ 10               n1=ix(1,neleNext)
+!$$$                  n2=ix(2,neleNext)
+!$$$                  n3=ix(3,neleNext)
+!$$$
+!$$$                  det =(x(1,n1)-x(1,n3))*(x(2,n2)-x(2,n3)) -
+!$$$     &                 (x(1,n2)-x(1,n3))*(x(2,n1)-x(2,n3))
+!$$$                  amatNext(1,1)=(x(2,n2)-x(2,n3))/det
+!$$$                  amatNext(2,1)=(x(2,n3)-x(2,n1))/det
+!$$$                  amatNext(3,1)=(x(2,n1)-x(2,n2))/det
+!$$$                  amatNext(1,2)=(x(1,n3)-x(1,n2))/det
+!$$$                  amatNext(2,2)=(x(1,n1)-x(1,n3))/det
+!$$$                  amatNext(3,2)=(x(1,n2)-x(1,n1))/det
+!$$$c
+!$$$c     only allow burgers vectors that are not parallel to entry side
+!$$$c     the element.
+!$$$c
+!$$$                  possibleNext(nburger)=.true.
+!$$$                  kk=abs(ix(nen1,neleNext))
+!$$$                  if(kk.ne.0)then
+!$$$                     k=ix(nsideNext,neleNext)
+!$$$                     kp1=mod(nsideNext,3)+1
+!$$$                     kp1=ix(kp1,neleNext)
+!$$$                     do j=1,nburger-1
+!$$$                        cross=burg(1,j)*(x(2,k)-x(2,kp1))-burg(2,j)
+!$$$     &                       *(x(1,k)-x(1,kp1))
+!$$$                        possibleNext(j)=(abs(cross).gt.LENGTHTOL)
+!$$$                     enddo
+!$$$                  else
+!$$$                     possibleNext(1:nburger-1)=.false.
+!$$$                  endif
+!$$$c
+!$$$c     get current strain in each DB element
+!$$$c
+!$$$                  n1=ix(1,neleNext)
+!$$$                  n2=ix(2,neleNext)
+!$$$                  n3=ix(3,neleNext)
+!$$$                  call GetElementStrain(b(1,n1),b(1,n2),b(1,n3),
+!$$$     &                 amatNext(1:3,1:2),epslocNext(1:3,1:3))
+!$$$     $
+!$$$c     find nearest possible slip vector for each element
+!$$$                  call findNextburgers(epslocNext,possibleNext,ibNex
+!$$$                  if(ibNext.ne.nburger)then
+!$$$                     if(itx(nsideNext,neleNext).eq.0)then
+!$$$	                goto 20
+!$$$                     endif
+!$$$                     if(ibNext.eq.iburg(i)) then
+!$$$                        examined(iburg(i),neleNext)=.true.
+!$$$                     endif
+!$$$                     neleNear=neleNext
+!$$$                     nsideNearR=nsideRight
+!$$$                     nsideNearL=nsideLeft
+!$$$                     neleNext=itx(nsideNext,neleNear)
+!$$$                     do j=1,3
+!$$$                        if(itx(j,neleNext).eq.neleNear)then
+!$$$                           nside=j
+!$$$                        endif
+!$$$                     enddo
+!$$$                     nsideRight=mod(nside,3)+1
+!$$$                     nsideLeft=mod(nsideRight,3)+1
+!$$$                     if(nsideNext.eq.nsideNearR)then
+!$$$                        nsideNext=nsideLeft
+!$$$                     else
+!$$$                        nsideNext=nsideRight
+!$$$                     endif
+!$$$                     goto 10
+!$$$                  else
+!$$$                     ndisl=ndisl-1
+!$$$                     iburg(i)=nburger
+!$$$                  endif
+!$$$               else
+!$$$                  write(*,*)'!Warning: No past Dislocation path'
+!$$$               endif
+!$$$ 20            continue
+!$$$            endif
+!$$$ 21         continue
+!$$$c$$$            print *, 'NSLIP = ', nslip, nburger
+!$$$	 enddo
+!$$$      end if
+!$$$c     Qu's modification ends
  
 !     Qu modified detection band rings starts
 !     if(ndisl.gt.1)then

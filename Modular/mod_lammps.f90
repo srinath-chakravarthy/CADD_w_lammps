@@ -345,7 +345,7 @@ contains
     
     call lammps_extract_atom(lammps_velocity, lmp, 'v')
     
-    call lammps_extract_compute(compute_lammps_dx, lmp, 'dx_free', peratom_style, array_type) 
+    call lammps_extract_compute(compute_lammps_dx, lmp, 'dx_all', peratom_style, array_type) 
 
     call lammps_extract_fix(compute_lammps_avg_dx, lmp, 'dx_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dy, lmp, 'dy_ave', peratom_style, vector_type, 1, 1)

@@ -102,11 +102,7 @@
       SUBROUTINE DOSTEPS_lammps(N,Atomdispl,Atomforce,Db,Fl,Epps,Iprint,Dsmax,&
      &                   Rseed,Dfn,Atomid,Atomcoord,Ix,F,Itx,Checkslip,&
      &                   Addedslip,Lostslip,Movedisl,Moveatoms, lmp)
-
-
-
 !
-
       USE MOD_GLOBAL
       USE MOD_POTEN
       USE MOD_DYNAMO
@@ -130,6 +126,9 @@
       DOUBLE PRECISION Atomdispl(NDF,NUMnp) , Db(N) , Atomforce(3,*) , &
      &                 Fl , Epps , Dsmax , Dfn , Atomcoord(NDF,*) , &
      &                 F(*) , mass
+      !< New average displacement vector for detection band at FT SC mods
+      DOUBLE PRECISION b_ave(ndf,numnp)
+      
       LOGICAL convonfn , Addedslip , Checkslip , Movedisl , Lostslip , &
      &        Moveatoms , DISLCHECK
       LOGICAL dislpass
@@ -397,7 +396,7 @@
             call lammps_command(lmp, command_line)
 
             ! ---- Updates Atom Displacements and forces
-            call update_from_lammps(AtomDispl, AtomCoord, AtomForce,  AveDispl, Velocity, virst, avevirst, lmp)
+            call update_from_lammps(AtomDispl, AtomCoord, AtomForce,  AveDispl, Velocity, virst, avevirst, b_ave, lmp)
 
 !!$           ! ---- Update Virial Stress from lammps and also obtains average virial stress
 !!$            call update_virial_stress_from_lammps(N, Virst, AveVirst, lmp)
@@ -415,7 +414,7 @@
 
                 IF ( DISLCHECK(Checkslip,Lostslip,Addedslip,Movedisl,Ix,&
                      &        Atomcoord,Atomdispl,Itx,ISRelaxed,NUMnp,NDF,NXDm,NUMel,&
-                     &        NEN1,NEWmesh,plottime,dislpass,npass) ) THEN
+                     &        NEN1,NEWmesh,plottime,dislpass,npass,b_ave) ) THEN
                    IF ( dislpass ) PRINT * , 'Dislocation removed from atomistics'
 !!$	     if (npass > 1) then
 !!$		Nsteps = NstepsOrig*2

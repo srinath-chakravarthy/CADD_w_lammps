@@ -412,7 +412,7 @@
         ! --------- Compute differential displacement from original position
         call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
 
-        call lammps_command(lmp, "compute dx_all all displace/atom")
+        call lammps_command(lmp, "compute dx_sub sub_atoms displace/atom")
 
         ! ---- Compute used for average displacement of interface atoms  -----
         call lammps_command(lmp, "compute dx_inter interface_atoms displace/atom")
@@ -421,13 +421,20 @@
         ! ----- Now define a fix to actually calculate the average for interface atoms
         write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[1]"
         call lammps_command(lmp, command_line)
-!!$        call lammps_command(lmp, "fix dx_ave interface_atoms ave/atom 1 25 25 c_dx_inter[1]")
         write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[2]"
         call lammps_command(lmp, command_line)
         write(command_line,  '(A38, 2(1X,I3), A15)') "fix dz_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[3]"
         call lammps_command(lmp, command_line)
-!!$        call lammps_command(lmp, "fix dy_ave interface_atoms ave/atom 1 25 25 c_dx_inter[2]")
-!!$        call lammps_command(lmp, "fix dz_ave interface_atoms ave/atom 1 25 25 c_dx_inter[3]")
+
+        ! ----- Now define a fix to actually calculate the average for all substrate atoms
+        write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[1]"
+        call lammps_command(lmp, command_line)
+        write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[2]"
+        call lammps_command(lmp, command_line)
+        write(command_line,  '(A38, 2(1X,I3), A15)') "fix dz_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[3]"
+        call lammps_command(lmp, command_line)
+
+
 
 
         ! ---- Compute used for virial stress on atoms
@@ -449,7 +456,7 @@
 
 
         ! ---- Dump data file 
-        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] c_dx_all[3] fx fy fz vx vy vz"
+        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", 10, " atom_lmp*.cfg id type x y z c_dx_sub[1] c_dx_sub[2] c_dx_sub[3] fx fy fz vx vy vz"
         call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         

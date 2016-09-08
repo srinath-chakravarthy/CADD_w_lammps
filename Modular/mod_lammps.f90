@@ -35,7 +35,7 @@ module mod_lammps
   !< All computes are extracted using per-atom quantities except where listed explicitly
   !< 1) Current differential displacement from original coordinates lammps_dx ---> mapped to CADD Atomdispl array
   !< 2) Current Averaged displacement over specified interval lammps_avg_dx ---> mapped to CADD avedispl array
-
+  !< 3) compute_lammps_dx contains the atom displacement of all substrate atoms only
   real (C_double), dimension(:,:), pointer :: compute_lammps_dx => NULL()
   
 
@@ -302,12 +302,16 @@ contains
     
   end subroutine update_lammps_coords
 
-  subroutine update_from_lammps(AtomDispl, AtomCoord, AtomForce,  AveDispl, Velocity, Virst, AveVirst, lmp)
+  subroutine update_from_lammps(AtomDispl, AtomCoord, AtomForce,  AveDispl, Velocity, Virst, AveVirst, b_ave, lmp)
 !!$ Updates local CADD arrays with the coordinates from lammps
 !!$ The procedure is as follows
 !!$     Lammps does not report displacement, but reports the actual current atom position
 !!$     atomcoord contains the original position of the atom
 !!$     atomdispl(i) = lammps_coord(
+
+!!$    SC mods
+!!$    Add additional averaging array for all atoms for detection band purposes
+    
     USE MOD_OUTPUT
     USE MOD_MATERIAL
     USE MOD_PARALLEL
@@ -317,17 +321,23 @@ contains
     USE MOD_DISL_PARAMETERS
     implicit none
     ! ----- Input variables -------
-    DOUBLE PRECISION :: Atomdispl(NDF,NUMnp), Atomforce(3,*) , Atomcoord(NDF,*) 
+    DOUBLE PRECISION :: Atomdispl(NDF,NUMnp), Atomforce(3,*) , Atomcoord(NDF,*)
+    DOUBLE PRECISION :: b_ave(ndf,numnp)
     DOUBLE PRECISION :: AveDispl(3,*) , Velocity(3,*)
     DOUBLE PRECISION :: Virst(3,3,*), AveVirst(3,3,*)
     type(c_ptr)::lmp
     ! -----------------------------------
 
 
-    ! ----- Averaged Displacement Components
+    ! ----- Averaged Displacement Components for the interface ...
     real (C_double), dimension(:), pointer :: compute_lammps_avg_dx => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_dy => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_dz => NULL()
+    ! ---- Averaged Displacement Components for all substrate atoms
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dx => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dy => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dz => NULL()
+    
 
   ! --------- Averaged Stress components -------
   real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
@@ -345,25 +355,41 @@ contains
     
     call lammps_extract_atom(lammps_velocity, lmp, 'v')
     
-    call lammps_extract_compute(compute_lammps_dx, lmp, 'dx_free', peratom_style, array_type) 
+!!$    Substrate Displacements
+!!$    ---------------------------------------------------------------------------------------------------   
+    call lammps_extract_compute(compute_lammps_dx, lmp, 'dx_sub', peratom_style, array_type) 
+    call lammps_extract_fix(compute_lammps_avg_sub_dx, lmp, 'dx_sub_ave', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_sub_dy, lmp, 'dy_sub_ave', peratom_style, vector_type, 1, 1)
+    call lammps_extract_fix(compute_lammps_avg_sub_dz, lmp, 'dz_sub_ave', peratom_style, vector_type, 1, 1)
+!!$    ---------------------------------------------------------------------------------------------------
 
+!!$    Interface Displacements
+!!$    ---------------------------------------------------------------------------------------------------      
     call lammps_extract_fix(compute_lammps_avg_dx, lmp, 'dx_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dy, lmp, 'dy_ave', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_dz, lmp, 'dz_ave', peratom_style, vector_type, 1, 1)
-   
-    call lammps_extract_compute(compute_lammps_stress, lmp, 'compute_stress', peratom_style, array_type)
+!!$    ---------------------------------------------------------------------------------------------------      
 
+!!$    Virial Stresses
+!!$    ---------------------------------------------------------------------------------------------------          
+    call lammps_extract_compute(compute_lammps_stress, lmp, 'compute_stress', peratom_style, array_type)
     call lammps_extract_fix(compute_lammps_avg_stress_xx, lmp, 'stress_ave_xx', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_stress_yy, lmp, 'stress_ave_yy', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_stress_zz, lmp, 'stress_ave_zz', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_stress_xy, lmp, 'stress_ave_xy', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_stress_zx, lmp, 'stress_ave_zx', peratom_style, vector_type, 1, 1)
     call lammps_extract_fix(compute_lammps_avg_stress_yz, lmp, 'stress_ave_yz', peratom_style, vector_type, 1, 1)
+!!$    ---------------------------------------------------------------------------------------------------          
 
+!!$    Mapping Back to CADD
+!!$    Pad atoms positions we do not want to average, so no averaging is performed   
+!!$    ---------------------------------------------------------------------------------------------------
+!!$    Initiall B_ave contains the displacement of all atoms
+    B_ave = atomdispl
     do iatom = 1, numnp
-       if (isRelaxed(iatom) /= 0) then
+       if (isRelaxed(iatom) /= IndexContinuum) then
 	        AveDispl(1:NDF, iAtom) = 0.0d0
-          if (isRelaxed(iatom) /= -1) then
+          if (isRelaxed(iatom) /= IndexPad) then
 
              lmpatom = lammps_cadd_map(iatom)
 			 
@@ -375,8 +401,14 @@ contains
              Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
 
              AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
+
+!!$             New average for substrate atoms
+             B_ave(1,iatom) = compute_lammps_avg_sub_dx(lmpatom)
+             B_ave(2,iatom) = compute_lammps_avg_sub_dy(lmpatom)
+             B_ave(3,iatom) = compute_lammps_avg_sub_dz(lmpatom)
+
              
-             if (isRelaxed(iAtom) == 2) then 
+             if (isRelaxed(iAtom) == IndexInterface) then 
                 AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
                 AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
                 AveDispl(3, iatom) = compute_lammps_avg_dz(lmpatom)
@@ -420,8 +452,8 @@ contains
           end if
        end if
     end do
+!!$    ---------------------------------------------------------------------------------------------------          
 
-!!$    AveVirst(:,:,:) = Virst(:,:,:)
 
   end subroutine update_from_lammps
 end module mod_lammps

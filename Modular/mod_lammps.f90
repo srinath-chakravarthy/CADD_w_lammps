@@ -17,33 +17,33 @@ module mod_lammps
   integer, dimension(:), allocatable :: lammps_cadd_map, cadd_lammps_map
   integer, dimension(:), allocatable :: lammps_pad_map, pad_lamms_map
 
-  
+
   !< Gmap arrays contain mapping to lammps_gather and lammps_scatter 
   integer, dimension(:), allocatable :: lammps_cadd_gmap, cadd_lammps_gmap
-  
+
   !< Main coordinate, force and velocity arrays extracted using extract_atom
   real (C_double), dimension(:,:), pointer :: lammps_coord => NULL()
   real (C_double), dimension(:,:), pointer :: lammps_velocity => NULL()
   real (C_double), dimension(:,:), pointer :: lammps_force => NULL()
 
-  
+
   !< Other main items such as energies
   !< I assume these are coming from computes
   !< To be defined 
-  
+
   !< Various computes values
   !< All computes are extracted using per-atom quantities except where listed explicitly
   !< 1) Current differential displacement from original coordinates lammps_dx ---> mapped to CADD Atomdispl array
   !< 2) Current Averaged displacement over specified interval lammps_avg_dx ---> mapped to CADD avedispl array
   !< 3) compute_lammps_dx contains the atom displacement of all substrate atoms only
   real (C_double), dimension(:,:), pointer :: compute_lammps_dx => NULL()
-  
 
-  
+
+
   real (C_double), dimension(:,:), pointer :: compute_lammps_stress => NULL()
 
-  
-  
+
+
 contains
   subroutine map_from_lammps(x,id,lmp)
     implicit none
@@ -64,9 +64,9 @@ contains
     double precision, dimension(:), allocatable :: r
     double precision, dimension(:,:), allocatable :: rcoords
 
-    
+
     tol = 1.e-5
-    
+
 
     if (C_ASSOCIATED(lmp)) then
        ! ---- Obtain pointers to internal lammps data ---- 
@@ -77,14 +77,14 @@ contains
        n_lammps_atoms = size(lammps_coord,2)
        allocate(cadd_lammps_map(n_lammps_atoms))
        allocate(lammps_cadd_map(numnp))
-       
+
        ! Initialize the arrays to large, known, negative value for error checking
        ! default integer is of kind4, max value of 2147483647...so use intrisic function
        ! huge of a kind4 integer (value doesn't 
        kind4int = 0;
        cadd_lammps_map = -HUGE(kind4int)
        lammps_cadd_map = -HUGE(kind4int)
-       
+
 !!$       print *, 'Size of arrays = ', size(cadd_lammps_map), size(lammps_cadd_map)
 !!$
 !!$       print *, 'Number of Lammps Atoms = ', n_lammps_atoms
@@ -105,7 +105,7 @@ contains
        end do
     end if
 
-    
+
     call lammps_gather_atoms(lmp,'x',3, r)
     nsize = size(r)/3
     allocate(rcoords(3,nsize))
@@ -114,12 +114,12 @@ contains
     ! Allocate and initialize arrays
     allocate(lammps_cadd_gmap(numnp))
     allocate(cadd_lammps_gmap(nsize))
-    
+
     cadd_lammps_gmap = -HUGE(kind4int)
     lammps_cadd_gmap = -HUGE(kind4int)
 
     print *, nsize, n_lammps_atoms
-    
+
     do iAtom = 1, numnp
        if (isRelaxed(iAtom) /= 0) then
           do catom = 1, nsize
@@ -148,7 +148,7 @@ contains
 !!$     As with the previous mapping this needs to be called only once in the beginning
 !!$     TODO check to make sure this subroutine is called before anything
 
-   subroutine update_lammps_coords(atomcoord, atomdispl, update_pad, update_all, lmp)
+  subroutine update_lammps_coords(atomcoord, atomdispl, update_pad, update_all, lmp)
     implicit none
     !<--- Input parameters ----
     double precision :: atomcoord(nxdm,numnp), atomdispl(nxdm, numnp)
@@ -174,7 +174,7 @@ contains
     character(len=10) :: atom_type
 
     logical :: update_all, update_pad, update_def
-    
+
     call lammps_extract_global(xlo, lmp, 'boxxlo')
     call lammps_extract_global(xhi, lmp, 'boxxhi')
     call lammps_extract_global(ylo, lmp, 'boxylo')
@@ -182,7 +182,7 @@ contains
 
     print *, 'Lammps box size = ', xlo, xhi, ylo, yhi
 
-    
+
     call lammps_gather_atoms(lmp,'x',3, r)
     natoms = size(r)/3
     allocate(rcoords(3,natoms))
@@ -195,7 +195,7 @@ contains
     ! --- so we can ignore the indenter atoms
     !call lammps_gather_atoms(lmp,'type',1,types)
 
-   ! print*,'printing out types'
+    ! print*,'printing out types'
 
     !do iatom = 1,natoms
     !  print*,'atom ',iatom,' type ', types(iatom)
@@ -211,49 +211,49 @@ contains
 
     print*,'--------lammps_cadd_map--------'
     print*,'size lammps_cadd_map', size(lammps_cadd_map)
-    
+
     !do iatom = 1, numnp
     !   print*,'lmp_atom', lammps_cadd_map(iatom)
     !end do
 
 
     do iatom = 1, numnp
-		if (update_all) then
-			update_def = (isrelaxed(iAtom) /= 0) 
-	    else
-			update_def = (isrelaxed(iAtom) == -1)
-		end if
-	   
-!	    if (update_pad) then
-!			update_def = (isrelaxed(iAtom) == -1)
-!	    end if
-		
-	    if (update_def) then 
-			   lmpatom = lammps_cadd_gmap(iatom)
-!         print*,'lmpatom update_def', lmpatom
-         !if (lmpatom >= 1 .AND. lmpatom <= natoms) then
-			      rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-			      rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-			      rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
-         !end if
-	    end if
-    end do	
-	
-	
-!    do iatom = 1, numnp
-!       if (isRelaxed(iatom) /= 0) then
-!          if (update_all) then
-!             update_def = (isrelaxed(iAtom) /= 0) 
-!          else
-!             update_def = (isrelaxed(iAtom)==-1)
-!          end if
-!       end if
-!       if (isRelaxed(iatom) /=0) then 
-!          if (update_def) then 
-!             lmpatom = lammps_cadd_gmap(iatom)
-!             rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-!             rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-!             rcoords(3,lmpatom) = 0.0d0
+       if (update_all) then
+          update_def = (isrelaxed(iAtom) /= 0) 
+       else
+          update_def = (isrelaxed(iAtom) == -1)
+       end if
+
+       !	    if (update_pad) then
+       !			update_def = (isrelaxed(iAtom) == -1)
+       !	    end if
+
+       if (update_def) then 
+          lmpatom = lammps_cadd_gmap(iatom)
+          !         print*,'lmpatom update_def', lmpatom
+          !if (lmpatom >= 1 .AND. lmpatom <= natoms) then
+          rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+          rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+          rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
+          !end if
+       end if
+    end do
+
+
+    !    do iatom = 1, numnp
+    !       if (isRelaxed(iatom) /= 0) then
+    !          if (update_all) then
+    !             update_def = (isrelaxed(iAtom) /= 0) 
+    !          else
+    !             update_def = (isrelaxed(iAtom)==-1)
+    !          end if
+    !       end if
+    !       if (isRelaxed(iatom) /=0) then 
+    !          if (update_def) then 
+    !             lmpatom = lammps_cadd_gmap(iatom)
+    !             rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+    !             rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+    !             rcoords(3,lmpatom) = 0.0d0
 !!$             if (isrelaxed(iatom) /=0 ) then
 !!$                if (isrelaxed(iatom) == -1) then
 !!$                   atom_type = "pad"
@@ -267,16 +267,16 @@ contains
 !!$                write(*, '(A25,A5,2I5, 6(1X,E15.8))'),'Pad atom displacement = ', atom_type, iatom, lmpatom, &
 !!$                     atomcoord(1:2,iatom), atomdispl(1:2, iatom), rcoords(1:2,lmpatom)
 !!$             endif
-!          end if
-!       end if
-!    end do
+    !          end if
+    !       end if
+    !    end do
 
     do iatom = 1, natoms
        do j = 1,3
           r((iatom-1)*3 + j) = rcoords(j,iatom)
        end do
     end do
-    
+
 !!$    print *, minval(rcoords(1,:)), maxval(rcoords(1,:)), minval(rcoords(2,:)), maxval(rcoords(2,:))
 !!$
 !!$    write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all x final ',  &
@@ -299,7 +299,7 @@ contains
        deallocate(rcoords)
     end if
 
-    
+
   end subroutine update_lammps_coords
 
   subroutine update_from_lammps(AtomDispl, AtomCoord, AtomForce,  AveDispl, Velocity, Virst, AveVirst, b_ave, lmp)
@@ -311,7 +311,7 @@ contains
 
 !!$    SC mods
 !!$    Add additional averaging array for all atoms for detection band purposes
-    
+
     USE MOD_OUTPUT
     USE MOD_MATERIAL
     USE MOD_PARALLEL
@@ -325,6 +325,7 @@ contains
     DOUBLE PRECISION :: b_ave(ndf,numnp)
     DOUBLE PRECISION :: AveDispl(3,*) , Velocity(3,*)
     DOUBLE PRECISION :: Virst(3,3,*), AveVirst(3,3,*)
+    DOUBLE PRECISION :: test, z2
     type(c_ptr)::lmp
     ! -----------------------------------
 
@@ -337,24 +338,27 @@ contains
     real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dx => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dy => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_sub_dz => NULL()
-    
 
-  ! --------- Averaged Stress components -------
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yy => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zz => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xy => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zx => NULL()
-  real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yz => NULL()
 
-    
-    
-    integer :: iatom, i, j, nsize, lmpatom
+    ! --------- Averaged Stress components -------
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xx => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yy => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zz => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xy => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zx => NULL()
+    real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yz => NULL()
+
+
+
+    integer :: iatom, i, j, nsize, lmpatom, itest
+
+    z2 = z_length/2.d0;
+    print *, 'Periodic box length = ', z2
 
     call lammps_extract_atom(lammps_force, lmp, 'f')
-    
+
     call lammps_extract_atom(lammps_velocity, lmp, 'v')
-    
+
 !!$    Substrate Displacements
 !!$    ---------------------------------------------------------------------------------------------------   
     call lammps_extract_compute(compute_lammps_dx, lmp, 'dx_sub', peratom_style, array_type) 
@@ -388,16 +392,16 @@ contains
     B_ave = atomdispl
     do iatom = 1, numnp
        if (isRelaxed(iatom) /= IndexContinuum) then
-	        AveDispl(1:NDF, iAtom) = 0.0d0
+          AveDispl(1:NDF, iAtom) = 0.0d0
           if (isRelaxed(iatom) /= IndexPad) then
 
              lmpatom = lammps_cadd_map(iatom)
-			 
+
              !print*,'lmpatom update_cadd', lmpatom
              !if (lmpatom >= 1 .AND. lmpatom <= nsize) then
-             
+
              Atomforce(1:NDF,iatom) = lammps_force(1:NDF,lmpatom)
-             
+
              Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
 
              AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
@@ -406,8 +410,13 @@ contains
              B_ave(1,iatom) = compute_lammps_avg_sub_dx(lmpatom)
              B_ave(2,iatom) = compute_lammps_avg_sub_dy(lmpatom)
              B_ave(3,iatom) = compute_lammps_avg_sub_dz(lmpatom)
+             if (abs(B_ave(3,iatom)) > z2) then
+                itest = int(abs(B_ave(3,iatom))/z2)
+                test = abs(B_ave(3,iatom))-itest*z2
+                test = sign(test, B_ave(3,iatom))
+                B_ave(3,iatom) = test
+             end if
 
-             
              if (isRelaxed(iAtom) == IndexInterface) then 
                 AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
                 AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
@@ -420,10 +429,10 @@ contains
 !!$             value exists accessible as such
 !!$             print*,'compute_lammps_avg_stress_xx of lmpatom 1', compute_lammps_avg_stress_xx(1)
 
-!             print*,'compute_lammps_stress of (1,lmpatom)', compute_lammps_stress(1, lmpatom)
-!             print*,'iAtom before crash: ', iAtom
-!             Virst(1,1,iAtom) = compute_lammps_stress(1, lmpatom)
-!             print*,'Virst of lmpatom', Virst(1,1,iAtom)
+             !             print*,'compute_lammps_stress of (1,lmpatom)', compute_lammps_stress(1, lmpatom)
+             !             print*,'iAtom before crash: ', iAtom
+             !             Virst(1,1,iAtom) = compute_lammps_stress(1, lmpatom)
+             !             print*,'Virst of lmpatom', Virst(1,1,iAtom)
 
              do i = 1, 3
                 do j = 1, 3

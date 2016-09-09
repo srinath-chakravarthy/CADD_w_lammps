@@ -690,13 +690,13 @@
                CALL CHECKBURGERS(EPSloc(1:3,1:3,i),POSsible(1:NBUrger,i)&
      &                           ,IBUrg(i),X,B_ave,Ix,IMAp(i),ENOrm)
                WRITE (*,'(A,4I7,A)') 'slip found in element' , IMAp(i) ,  ABS(Ix(Nen1,IMAp(i))) , ELIdb(i) , NDBpoly , ' :'
-!$$$               write(*,*) x(1:2,ix(1,imap(i))),b(1:3,ix(1,imap(i)))
-!$$$               write(*,*) x(1:2,ix(2,imap(i))),b(1:3,ix(2,imap(i)))
-!$$$               write(*,*) x(1:2,ix(3,imap(i))),b(1:3,ix(3,imap(i)))
-!$$$               write(*,*)
-!$$$               write(*,*) 'strain matrix:'
-!$$$               write(*,'(3e15.6)') (epsloc(j,1:3,i),j=1,3)
-!$$$               write(*,*)
+               write(*,'(9(1X,F16.5))') x(1:3,ix(1,imap(i))),b(1:3,ix(1,imap(i))),b_ave(1:3,ix(1,imap(i)))
+               write(*,'(9(1X,F16.5))') x(1:3,ix(2,imap(i))),b(1:3,ix(2,imap(i))),b_ave(1:3,ix(2,imap(i)))
+               write(*,'(9(1X,F16.5))') x(1:3,ix(3,imap(i))),b(1:3,ix(3,imap(i))),b_ave(1:3,ix(3,imap(i)))
+               write(*,*)
+               write(*,*) 'strain matrix:'
+               write(*,'(3e15.6)') (epsloc(j,1:3,i),j=1,3)
+               write(*,*)
                WRITE (*,'(A,I5,3F16.6)') 'burgers vector:' , IBUrg(i) , BURg(1:3,IBUrg(i))
  
 !

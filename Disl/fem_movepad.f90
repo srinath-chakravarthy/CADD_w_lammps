@@ -217,11 +217,12 @@ END SUBROUTINE FE_TRICOORD
 !!$!!!!!!!!dw/cs added subroutine!!!!!!!!!!!!!!!!!!
 SUBROUTINE MOVE_DIS(Alpha,Temperature)
       USE MOD_DISL_PARAMETERS
-!!$      USE MOD_GLOBAL
+      USE MOD_GLOBAL
       IMPLICIT NONE
 !!$!*--MOVE_DIS197
       DOUBLE PRECISION Alpha , mobility , max_vel, max_ds
-      DOUBLE PRECISION sf_f , aa , bb, deltas
+!!$      DOUBLE PRECISION sf_f , aa , bb, deltas
+      DOUBLE PRECISION aa , bb, deltas
       DOUBLE PRECISION min_pos , Temperature , time_step_con
 
       INTEGER FE_LOCATE , i , elem_old, idisl, jdisl, j, irm
@@ -256,8 +257,13 @@ SUBROUTINE MOVE_DIS(Alpha,Temperature)
         max_vel = 2000.d0*1e10 !> A/s 
         
 !!$      max_vel = time_step_con*2000.0
+
+!!$    stacking fault energies now part of md.inp input file
+
 !!$      sf_f = .089*6.242E-2 ! sf energy in J/m2,i.e., 0.089
-	sf_f = 0.0d0 ! hex al no stacking fault eneregy
+!!$         sf_f = 0.0d0 ! hex al no stacking fault energy
+!!$        sf_f = 0.104*6.24e-2 ! EA sf energy in J/m2, i.e., 0.104 J/m2
+!!$      sf_f = 0.128*6.24e-2 ! LEA sf energy in J/m2, i.e., 0.128 J/m2
 !!!!    end of hacked parameters
  
       DO i = 1 , NDIsl

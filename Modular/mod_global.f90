@@ -206,7 +206,7 @@
       double precision :: particle_height   !!$> @var particle initial height above top surface (Angstrom)
       double precision :: particle_rotation !!$> @var particle rotation for different impact orientations
       double precision :: impact_angle      !!$> @var impact angle of particle with substrate
-
+      double precision :: sf_f              !!$> @var stacking fault energy of a material
 
 
       CONTAINS

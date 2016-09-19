@@ -45,7 +45,7 @@ subroutine write_lammps_data(Id, X, Ix, F, B, Itx, xmin, xmax, ymin, ymax)
   READ (200,*) particle_height
   READ (200,*) particle_rotation
   READ (200,*) impact_angle
-  READ (200,*) sf_f
+!!$  READ (200,*) sf_f
   CLOSE (200)
 
 

@@ -71,7 +71,6 @@ contains
     if (C_ASSOCIATED(lmp)) then
        ! ---- Obtain pointers to internal lammps data ---- 
        call lammps_extract_atom(lammps_coord, lmp, 'x')
-!!$       print *, 'Size of CADD domain = ', size(x), shape(x)
 
        ! ---- Create mapping to CADD -----------
        n_lammps_atoms = size(lammps_coord,2)
@@ -85,23 +84,20 @@ contains
        cadd_lammps_map = -HUGE(kind4int)
        lammps_cadd_map = -HUGE(kind4int)
 
-!!$       print *, 'Size of arrays = ', size(cadd_lammps_map), size(lammps_cadd_map)
-!!$
-!!$       print *, 'Number of Lammps Atoms = ', n_lammps_atoms
+     
        do iatom = 1, n_lammps_atoms
-!!$          print *,"Lammps coord = ", lammps_coord(1,iatom), lammps_coord(2,iatom)
           do catom = 1, numnp
              if (isRelaxed(catom) /= 0) then 
                 if (abs(lammps_coord(1,iatom)-x(1, catom)) < tol) then
                    if (abs(lammps_coord(2,iatom)-x(2, catom)) < tol) then
-                      cadd_lammps_map(iatom) = catom
-                      lammps_cadd_map(catom) = iatom
+			!if (abs(lammps_coord(3,iatom)-x(3, catom)) < tol) then
+			    cadd_lammps_map(iatom) = catom
+			    lammps_cadd_map(catom) = iatom
+			!end if	
                    end if
                 end if
              end if
           end do
-!!$          print *, 'Done mapping atom ', iatom, cadd_lammps_map(iatom)
-
        end do
     end if
 
@@ -125,8 +121,10 @@ contains
           do catom = 1, nsize
              if (abs(x(1,iAtom) - rcoords(1,catom)) < tol) then
                 if (abs(x(2,iAtom) - rcoords(2,catom)) < tol) then
-                   lammps_cadd_gmap(iAtom) = catom
-                   cadd_lammps_gmap(catom) = iAtom
+		    if (abs(x(3,iAtom) - rcoords(3,catom)) < tol) then
+			lammps_cadd_gmap(iAtom) = catom
+			cadd_lammps_gmap(catom) = iAtom
+		    end if
                 end if
              end if
           end do
@@ -165,6 +163,7 @@ contains
     double precision, dimension(:), allocatable :: r
     double precision, dimension(:,:), allocatable :: rcoords
     double precision, dimension(:), allocatable :: types
+    double precision, dimension(3) :: rtemp, prev_displ
 
     real (C_double), pointer :: xlo => NULL()
     real (C_double), pointer :: xhi => NULL()
@@ -188,33 +187,11 @@ contains
     allocate(rcoords(3,natoms))
     rcoords = reshape(r,shape(rcoords))
 
-
-    !print*,'before type gather'
-
-    ! --- collecting the types of each atom in lammps
-    ! --- so we can ignore the indenter atoms
-    !call lammps_gather_atoms(lmp,'type',1,types)
-
-    ! print*,'printing out types'
-
-    !do iatom = 1,natoms
-    !  print*,'atom ',iatom,' type ', types(iatom)
-    !  print*,'atom ',iatom,' xpos ', rcoords(1,iatom)
-    !enddo
-
     print*,'--------lammps_cadd_gmap--------'
     print*,'size lammps_cadd_gmap', size(lammps_cadd_gmap)
 
-    !do iatom = 1, numnp
-    !   print*,'lmp_atom', lammps_cadd_gmap(iatom)
-    !end do
-
     print*,'--------lammps_cadd_map--------'
     print*,'size lammps_cadd_map', size(lammps_cadd_map)
-
-    !do iatom = 1, numnp
-    !   print*,'lmp_atom', lammps_cadd_map(iatom)
-    !end do
 
 
     do iatom = 1, numnp
@@ -224,70 +201,24 @@ contains
           update_def = (isrelaxed(iAtom) == -1)
        end if
 
-       !	    if (update_pad) then
-       !			update_def = (isrelaxed(iAtom) == -1)
-       !	    end if
-
        if (update_def) then 
           lmpatom = lammps_cadd_gmap(iatom)
-          !         print*,'lmpatom update_def', lmpatom
-          !if (lmpatom >= 1 .AND. lmpatom <= natoms) then
-          rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-          rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-          rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
-          !end if
+          if (lmpatom >=1 .and. lmpatom <= natoms) then 
+	    rtemp = atomcoord(1:3,iatom) + atomdispl(1:3,iatom) - rcoords(1:3,lmpatom)
+	    prev_displ = rcoords(1:3,lmpatom) - atomcoord(1:3,iatom)
+	    write(*,'(A,2I8,4(1X,E15.6))') 'Pad atom Displacement ', iatom, lmpatom, atomcoord(1,iatom), rcoords(1,lmpatom)-prev_displ(1)
+	    rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
+	    rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
+	    rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
+          end if
        end if
     end do
-
-
-    !    do iatom = 1, numnp
-    !       if (isRelaxed(iatom) /= 0) then
-    !          if (update_all) then
-    !             update_def = (isrelaxed(iAtom) /= 0) 
-    !          else
-    !             update_def = (isrelaxed(iAtom)==-1)
-    !          end if
-    !       end if
-    !       if (isRelaxed(iatom) /=0) then 
-    !          if (update_def) then 
-    !             lmpatom = lammps_cadd_gmap(iatom)
-    !             rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
-    !             rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
-    !             rcoords(3,lmpatom) = 0.0d0
-!!$             if (isrelaxed(iatom) /=0 ) then
-!!$                if (isrelaxed(iatom) == -1) then
-!!$                   atom_type = "pad"
-!!$                elseif (isrelaxed(iatom) == 2) then 
-!!$                   atom_type = "inter"
-!!$                else
-!!$                   atom_type = "atom"
-!!$                end if
-!!$             end if
-!!$             if (abs(atomcoord(2,iatom)) < 5.0 .and. atomcoord(1,iatom) < 0) then 
-!!$                write(*, '(A25,A5,2I5, 6(1X,E15.8))'),'Pad atom displacement = ', atom_type, iatom, lmpatom, &
-!!$                     atomcoord(1:2,iatom), atomdispl(1:2, iatom), rcoords(1:2,lmpatom)
-!!$             endif
-    !          end if
-    !       end if
-    !    end do
 
     do iatom = 1, natoms
        do j = 1,3
           r((iatom-1)*3 + j) = rcoords(j,iatom)
        end do
     end do
-
-!!$    print *, minval(rcoords(1,:)), maxval(rcoords(1,:)), minval(rcoords(2,:)), maxval(rcoords(2,:))
-!!$
-!!$    write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all x final ',  &
-!!$         minval(rcoords(1,:)),  maxval(rcoords(1,:)),  &
-!!$         ' remap units box'
-!!$    call lammps_command(lmp, command_line)
-!!$   
-!!$    write(command_line, '(A23,2(1X,F15.8),A16)') 'change_box all y final ',  &
-!!$         minval(rcoords(2,:)), maxval(rcoords(2,:)), &
-!!$         ' remap units box'
-!!$    call lammps_command(lmp, command_line)
 
     call lammps_scatter_atoms(lmp,'x', r)
 
@@ -398,33 +329,32 @@ contains
              lmpatom = lammps_cadd_map(iatom)
 
              !print*,'lmpatom update_cadd', lmpatom
-             !if (lmpatom >= 1 .AND. lmpatom <= nsize) then
+             if (lmpatom >= 1 .AND. lmpatom <= nsize) then
 
-             Atomforce(1:NDF,iatom) = lammps_force(1:NDF,lmpatom)
+		Atomforce(1:NDF,iatom) = lammps_force(1:NDF,lmpatom)
 
-             Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
+		Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
 
-             AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
+		AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
 
 !!$             New average for substrate atoms
-             B_ave(1,iatom) = compute_lammps_avg_sub_dx(lmpatom)
-             B_ave(2,iatom) = compute_lammps_avg_sub_dy(lmpatom)
-             B_ave(3,iatom) = compute_lammps_avg_sub_dz(lmpatom)
-             if (abs(B_ave(3,iatom)) > z2) then
-                itest = int(abs(B_ave(3,iatom))/z2)
-                test = abs(B_ave(3,iatom))-itest*z2
-                test = sign(test, B_ave(3,iatom))
-                B_ave(3,iatom) = test
-             end if
+		B_ave(1,iatom) = compute_lammps_avg_sub_dx(lmpatom)
+		B_ave(2,iatom) = compute_lammps_avg_sub_dy(lmpatom)
+		B_ave(3,iatom) = compute_lammps_avg_sub_dz(lmpatom)
+		if (abs(B_ave(3,iatom)) > z2) then
+		    itest = int(abs(B_ave(3,iatom))/z2)
+		    test = abs(B_ave(3,iatom))-itest*z2
+		    test = sign(test, B_ave(3,iatom))
+		    B_ave(3,iatom) = test
+		end if
 
-             if (isRelaxed(iAtom) == IndexInterface) then 
-                AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
-                AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
-                AveDispl(3, iatom) = compute_lammps_avg_dz(lmpatom)
-             else
-                AveDispl(1:NDF, iatom) = AtomDispl(1:NDF,iatom)
-
-             end if
+		if (isRelaxed(iAtom) == IndexInterface) then 
+		    AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
+		    AveDispl(2, iatom) = compute_lammps_avg_dy(lmpatom)
+		    AveDispl(3, iatom) = compute_lammps_avg_dz(lmpatom)
+		else
+		    AveDispl(1:NDF, iatom) = AtomDispl(1:NDF,iatom)
+		end if
 
 !!$             value exists accessible as such
 !!$             print*,'compute_lammps_avg_stress_xx of lmpatom 1', compute_lammps_avg_stress_xx(1)
@@ -434,30 +364,31 @@ contains
              !             Virst(1,1,iAtom) = compute_lammps_stress(1, lmpatom)
              !             print*,'Virst of lmpatom', Virst(1,1,iAtom)
 
-             do i = 1, 3
-                do j = 1, 3
-                   if (i == j) then 
-                      Virst(i, i, iAtom) = compute_lammps_stress(i, lmpatom)
-                   else
-                      Virst(i, j, iAtom) = compute_lammps_stress(i+j+1, lmpatom)
-                   end if
-                end do
-             end do
+		do i = 1, 3
+		    do j = 1, 3
+		    if (i == j) then 
+			Virst(i, i, iAtom) = compute_lammps_stress(i, lmpatom)
+		    else
+			Virst(i, j, iAtom) = compute_lammps_stress(i+j+1, lmpatom)
+		    end if
+		    end do
+		end do    
 
-             AveVirst(1,1,iAtom) = compute_lammps_avg_stress_xx(lmpatom)
+		AveVirst(1,1,iAtom) = compute_lammps_avg_stress_xx(lmpatom)
 !!$             print*,'compute_lammps_avg_stress_xx of lmpatom', compute_lammps_avg_stress_xx(lmpatom)
 !!$             print*,'AveVirst of lmp atom', AveVirst(1,1,iAtom)
-             AveVirst(2,2,iAtom) = compute_lammps_avg_stress_yy(lmpatom)
-             AveVirst(3,3,iAtom) = compute_lammps_avg_stress_zz(lmpatom)
-             AveVirst(1,2,iAtom) = compute_lammps_avg_stress_xy(lmpatom)
-             AveVirst(1,3,iAtom) = compute_lammps_avg_stress_zx(lmpatom)
-             AveVirst(2,3,iAtom) = compute_lammps_avg_stress_yz(lmpatom)
+		AveVirst(2,2,iAtom) = compute_lammps_avg_stress_yy(lmpatom)
+		AveVirst(3,3,iAtom) = compute_lammps_avg_stress_zz(lmpatom)
+		AveVirst(1,2,iAtom) = compute_lammps_avg_stress_xy(lmpatom)
+		AveVirst(1,3,iAtom) = compute_lammps_avg_stress_zx(lmpatom)
+		AveVirst(2,3,iAtom) = compute_lammps_avg_stress_yz(lmpatom)
 !!$             ! ---- Symmetric Stress Tensor
-             AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
-             AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
-             AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
-
-             !end if
+		AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
+		AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
+		AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
+	    else 
+		print *, 'Wrong atom', iatom, lmpatom
+             end if
           end if
        end if
     end do

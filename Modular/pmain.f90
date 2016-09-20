@@ -143,6 +143,7 @@
             ALLOCATE (IX(NEN1*MAXel))
             ALLOCATE (ITX(3,MAXel))
             ALLOCATE (B(neqad))
+            
  
             ALLOCATE (B0(NDF,MAXnp+MAXel*NAD))
 !C--Jun Song: allocate neighflag for each atom

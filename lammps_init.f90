@@ -308,7 +308,7 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
      else 
 !!!!!!FIGURE OUT THIS 2.0 vs 1.9 tolerance issue to line up CADD and LAMMPS lattices!!
         write(command_line,'(A,4F15.3,A)') 'region 1 cylinder z 0.0 ', &
-             particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/2.0-1.d-3, grains(1)%dcell(3)/2.0+1.d-3, ' units box'
+             particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/1.9, grains(1)%dcell(3)/2.0+1.d-3, ' units box'
         call lammps_command(lmp, command_line)
      end if
   end if
@@ -319,7 +319,8 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   call lammps_command(lmp, 'group particle_atoms type 5')
 
   ! --- Create groups of atoms for fixes and computes ----
-  call lammps_command(lmp, "group md_atoms type 1 3 4 5")
+  call lammps_command(lmp, "group md_atoms type 1 2 3 4 5")
+  call lammps_command(lmp, "group temp_md_atoms type 1 3 4 5")
   call lammps_command(lmp, "group sub_atoms type 1 3 4")
   call lammps_command(lmp, "group free_atoms type 1")
   call lammps_command(lmp, "group pad_atoms type 2")
@@ -345,7 +346,7 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
 !!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
   call lammps_command(lmp, "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al Al")
 
-  call lammps_command(lmp, "neighbor 0.1 bin ")
+  call lammps_command(lmp, "neighbor 2.0 bin ")
   call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
   ! ---------- Various Fixes ----------------------------------------------
@@ -387,7 +388,7 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
         call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
         call lammps_command(lmp, "compute part_temp particle_atoms temp/partial 1 1 0")
      else 
-        call lammps_command(lmp, "compute md_temp md_atoms temp/com")
+        call lammps_command(lmp, "compute md_temp temp_md_atoms temp/com")
         call lammps_command(lmp, "compute sub_temp sub_atoms temp/com")
         call lammps_command(lmp, "compute free_temp free_atoms temp/com")
         call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
@@ -431,6 +432,8 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
 
   call lammps_command(lmp, "compute dx_sub sub_atoms displace/atom")
+  
+  call lammps_command(lmp,"compute dx_pad pad_atoms displace/atom")
 
   ! ---- Compute used for average displacement of interface atoms  -----
   call lammps_command(lmp, "compute dx_inter interface_atoms displace/atom")
@@ -474,7 +477,7 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
 
 
   ! ---- Dump data file 
-  write(command_line, '(A18,I3,A91)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_sub[1] c_dx_sub[2] c_dx_sub[3] fx fy fz vx vy vz v_dz_all"
+  write(command_line, '(A18,I3,A99)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg.gz id type x y z f_dx_sub_ave f_dy_sub_ave fx fy fz vx vy vz f_dx_ave f_dy_ave"
   call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
 

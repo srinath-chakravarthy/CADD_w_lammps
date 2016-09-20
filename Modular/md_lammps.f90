@@ -22,7 +22,7 @@
       DOUBLE PRECISION Straine0
       integer :: logic
       character*80 :: filename
-
+            
 !!$      filename = 'out/atom_temp_fem0.cfg'
 !!$      CALL IOFILE(filename,'formatted  ',logic,.FALSE.)
 !!$      CALL DUMP_ATOM(Atomcoord,Atomdispl,logic)
@@ -187,6 +187,9 @@
 
       ! ---- Lammps related local variables
       integer :: total_lammps_steps, fem_call_back_steps, lammps_loop, jstep
+      integer (C_int), pointer :: ntimestep
+      logical :: lammps_equil
+     
       character(1024) :: command_line
       logical :: update_pad, update_all
 
@@ -258,6 +261,7 @@
 
       finishmd = .FALSE.
       newmd = .FALSE.
+      lammps_equil = .false. 
       timestep = lammps_timestep
 
       SYStemp = lammps_temperature
@@ -323,14 +327,6 @@
          ifem = 0
 
 !!$      equilibrate for a number of steps (set in md.inp)
-         write(command_line,*) "run ", num_initial_equil
-         call lammps_command(lmp, command_line)
-!!$         call lammps_command(lmp, "unfix fix_integ")
-         call lammps_command(lmp, "unfix int_sub")
-         call lammps_command(lmp, "unfix int_part")
-         call lammps_command(lmp, "fix int_md md_atoms nve/limit 0.5")
-         write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
-         call lammps_command(lmp, command_line)  
 
 !!$      recalculate fem forces after equilibration
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
@@ -361,6 +357,21 @@
          ! ----- Run lammps one step at a time
          ! ---- Here we can choose, but temporarily to maintain structure of current code
          ! ---- Lammps is basically run one step at a time
+         call lammps_extract_global(ntimestep,lmp,'ntimestep')
+	 print *, 'Lammps timestep number = ', ntimestep
+         if (ntimestep == num_initial_equil ) then 
+	    lammps_equil = .true. 
+	 end if
+	 
+	 if (lammps_equil) then 
+	    lammps_equil = .false. 
+	    call lammps_command(lmp, "unfix int_sub")
+	    call lammps_command(lmp, "unfix int_part")
+	    call lammps_command(lmp, "fix int_md md_atoms nve/limit 0.5")
+	    write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
+	    call lammps_command(lmp, command_line)  
+	 end if
+	 
          do jstep = 1, 1
             if (istep < lammps_loop) then
                write(command_line, *) "run ", fem_call_back_steps, " pre yes post no"
@@ -453,37 +464,6 @@
 !!$	  end if
 
 !!$         JM, hard coded off
-            MOVemesh = .false.
-            IF ( MOVemesh ) THEN
-!!$               if (Moved) then
-!!$                  Moved = .false.
-!!$               end if
-               IF ( istep==1 ) THEN
-                  CALL GET_CRACK_TIP(Atomcoord,Atomdispl)
-                  IF ( XTIp(1)>0.0D0 ) THEN
-                     IF ( ABS(XTIp(1)-XTIp_init(1))>(X_Move_mesh) ) THEN
-                        DO i = 1 , 2
-                           XTIp_actual(i) = ABS(XTIp(i)-XTIp_init(i))
-                           IF ( XTIp(i)>XTIp_init(i) ) THEN
-                              X_Tip_dir(i) = 1.0D0
-                           ELSE
-                              X_Tip_dir(i) = -1.0D0
-                           ENDIF
-                        ENDDO
-                        PRINT * , 'xtip_actual = ' , XTIp_actual , &
-                             &                     X_Tip_dir
-                        IF ( X_Tip_dir(1)>0.0D0 ) THEN
-                           IF ( INT(XTIp_actual(1)/X_Move_mesh)>0 ) THEN
-                              CALL MOVE_ATOMISTIC_CRACK(Atomcoord,Ix,&
-                                   &                        Atomdispl)
-                              MOVed = .TRUE.
-                           ENDIF
-                        ENDIF
-                        !!$		   return
-                     ENDIF
-                  ENDIF
-               ENDIF
-            ENDIF
 
 !!$            if (ndisl > 4) then
 !!$               if (mod(iStep,10) .eq. 0) then

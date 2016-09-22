@@ -100,8 +100,8 @@ subroutine write_lammps_data(Id, X, Ix, F, B, Itx, xmin, xmax, ymin, ymax)
         !! TODO get zmin and zmax from mat file automatically
         !! --- For now assume single grain to be modified for multiple grains
         !!zmax = 0.0d0
-        zmax = grains(1)%dcell(3)/2.0
-        zmin = -grains(1)%dcell(3)/2.0
+        zmax = grains(1)%dcell(3)/2.0 - grains(1)%dcell(3)/4.0
+        zmin = -grains(1)%dcell(3)/2.0 - grains(1)%dcell(3)/4.0
      end if
   end if
 
@@ -188,7 +188,7 @@ subroutine write_lammps_data(Id, X, Ix, F, B, Itx, xmin, xmax, ymin, ymax)
   end do
 
 !!$ no stadium on free surface
-  stadium_ymax = 2.0d0*stadium_width
+!!$  stadium_ymax = 2.0d0*stadium_width
 
   write(1010,*)
   close(1010)
@@ -229,6 +229,8 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   double precision :: xperiod, yperiod, zperiod, a0
   character(1024):: command_line
   integer :: iatom, i,j,k,l
+  
+  integer :: num_threads, omp_get_num_threads
 
   real (C_double), pointer :: xlo => NULL()
   real (C_double), pointer :: xhi => NULL()
@@ -256,6 +258,15 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   call lammps_command(lmp, 'units metal')
   call lammps_command(lmp, 'atom_style atomic')
   call lammps_command(lmp, 'dimension 3')
+#ifdef _OPENMP
+!$OMP PARALLEL SHARED(num_threads)
+    num_threads = omp_get_num_threads()
+!$OMP END PARALLEL
+    write(command_line,'(A,I3)') 'package omp ', num_threads
+    call lammps_command(lmp, command_line)
+    call lammps_command(lmp, 'suffix omp')
+#endif 
+  
   call lammps_command(lmp, 'boundary ss sm pp')
 !!$        call lammps_command(lmp, 'boundary ff ff pp')
   call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
@@ -280,10 +291,10 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
         !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 -1 0 orient y 1 1 1 orient z -1 -1 2 spacing ', &
         !!   xperiod, yperiod, zperiod
         print *, "Lattice constant in lammps = ", a0
-        write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0 spacing ', &
-           xperiod, yperiod, zperiod
-        !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
-        !!     xperiod, yperiod, zperiod
+        !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 1 -2 orient y 1 1 1 orient z 1 -1 0 spacing ', &
+        !!   xperiod, yperiod, zperiod
+        write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
+             xperiod, yperiod, zperiod
         call lammps_command(lmp, command_line)
 
      end if
@@ -307,20 +318,20 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
         call lammps_command(lmp, command_line)
      else 
 !!!!!!FIGURE OUT THIS 2.0 vs 1.9 tolerance issue to line up CADD and LAMMPS lattices!!
-        write(command_line,'(A,4F15.3,A)') 'region 1 cylinder z 0.0 ', &
-             particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/1.9, grains(1)%dcell(3)/2.0+1.d-3, ' units box'
-        call lammps_command(lmp, command_line)
+!!$        write(command_line,'(A,4F15.3,A)') 'region 1 cylinder z 0.0 ', &
+!!$             particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/1.9, grains(1)%dcell(3)/2.0+1.d-3, ' units box'
+!!$        call lammps_command(lmp, command_line)
      end if
   end if
 
 
   !! --- creating particle atoms, type 5---
-  call lammps_command(lmp, 'create_atoms 5 region 1')   
-  call lammps_command(lmp, 'group particle_atoms type 5')
+!!$  call lammps_command(lmp, 'create_atoms 5 region 1')   
+!!$  call lammps_command(lmp, 'group particle_atoms type 5')
 
   ! --- Create groups of atoms for fixes and computes ----
-  call lammps_command(lmp, "group md_atoms type 1 2 3 4 5")
-  call lammps_command(lmp, "group temp_md_atoms type 1 3 4 5")
+  call lammps_command(lmp, "group md_atoms type 1 2 3 4")
+  call lammps_command(lmp, "group temp_md_atoms type 1 3 4")
   call lammps_command(lmp, "group sub_atoms type 1 3 4")
   call lammps_command(lmp, "group free_atoms type 1")
   call lammps_command(lmp, "group pad_atoms type 2")
@@ -329,15 +340,21 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
 
   !---------------------------------------------------------------------------------------------       
   ! ------ Code to correctly compute the differential displacement ----
-  ! --- Currently only z direction (periodic direction is implemented) ----
-  ! --- Can be easily extended to other dimensions
-
-  !!!call lammps_command(lmp,'fix dz all property/atom d_dz')
+  call lammps_command(lmp,'compute vx_all all property/atom vx')
+  call lammps_command(lmp,'compute vy_all all property/atom vy')
   call lammps_command(lmp,'compute vz_all all property/atom vz')
+  
+  call lammps_command(lmp,'compute vx_inter interface_atoms property/atom vx')
+  call lammps_command(lmp,'compute vy_inter interface_atoms property/atom vy')
   call lammps_command(lmp,'compute vz_inter interface_atoms property/atom vz')
+  ! All atoms differential displacement = v*dt
+  call lammps_command(lmp,'variable dx_all atom "c_vx_all*dt"')
+  call lammps_command(lmp,'variable dy_all atom "c_vy_all*dt"')
   call lammps_command(lmp,'variable dz_all atom "c_vz_all*dt"')
+  ! Interface differential displacement = v*dt
+  call lammps_command(lmp,'variable dx_inter atom "c_vx_inter*dt"')
+  call lammps_command(lmp,'variable dy_inter atom "c_vy_inter*dt"')
   call lammps_command(lmp,'variable dz_inter atom "c_vz_inter*dt"')
-  !call lammps_command(lmp, 'compute dz sub_atoms property/atom d_dz')
   !---------------------------------------------------------------------------------------------       
 
   
@@ -363,17 +380,17 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
         call lammps_command(lmp, "velocity particle_atoms set NULL NULL 0.0 units box")
      else 
         call lammps_command(lmp, "velocity sub_atoms create $(2.0*v_mytemp) 426789 dist uniform mom yes rot yes")
-        call lammps_command(lmp, "velocity particle_atoms create $(2.0*v_mytemp) 849823 dist uniform mom yes rot yes")
+!!$        call lammps_command(lmp, "velocity particle_atoms create $(2.0*v_mytemp) 849823 dist uniform mom yes rot yes")
      end if
   end if
 
   !! --- equilibrate temperature in two NVT ensembles (1 for particle, 1 for substrate)
   call lammps_command(lmp, "fix int_sub sub_atoms nve/limit 0.5")
-  call lammps_command(lmp, "fix int_part particle_atoms nve/limit 0.5")
+!!$  call lammps_command(lmp, "fix int_part particle_atoms nve/limit 0.5")
 
-  write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+  write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6),A9)') "fix fix_temp langevin_atoms langevin ", &
        tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
-       -1000.00, 1000.00, stadium_width
+       -1000.00, 1000.00, stadium_width, 'zero yes'
   call lammps_command(lmp, command_line)
 
   ! ----------------------------------------------------------------------------------
@@ -392,7 +409,7 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
         call lammps_command(lmp, "compute sub_temp sub_atoms temp/com")
         call lammps_command(lmp, "compute free_temp free_atoms temp/com")
         call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
-        call lammps_command(lmp, "compute part_temp particle_atoms temp/com")
+!!$        call lammps_command(lmp, "compute part_temp particle_atoms temp/com")
      end if
   end if
 
@@ -424,9 +441,6 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
 
 
   ! ------------- Various computes -------------------------------
-  call lammps_command(lmp, "thermo 1")
-  call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_part_temp c_sub_temp c_pe c_ke vol")
-
   ! --------- Compute differential displacement from original position
   call lammps_command(lmp, "set group all image 0 0 0")
   call lammps_command(lmp, "compute dx_free free_atoms displace/atom")
@@ -434,10 +448,14 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   call lammps_command(lmp, "compute dx_sub sub_atoms displace/atom")
   
   call lammps_command(lmp,"compute dx_pad pad_atoms displace/atom")
+  
+  call lammps_command(lmp,"compute dx_all all displace/atom")
 
   ! ---- Compute used for average displacement of interface atoms  -----
   call lammps_command(lmp, "compute dx_inter interface_atoms displace/atom")
 
+
+    
 
   ! ----- Now define a fix to actually calculate the average for interface atoms
   write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[1]"
@@ -450,12 +468,18 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   ! ----- Now define a fix to actually calculate the average for all substrate atoms
   write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[1]"
   call lammps_command(lmp, command_line)
-  write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[2]"
+  write(command_line, '(A38, 2(1X,I3), A15)') "fix dy_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[2]"
   call lammps_command(lmp, command_line)
-  write(command_line,  '(A38, 2(1X,I3), A15)') "fix dz_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " v_dz_all"
+  write(command_line, '(A38, 2(1X,I3), A15)') "fix dz_sub_ave sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " v_dz_all"
   call lammps_command(lmp, command_line)
 
-
+  ! ---- Code to compare the v*dt average 
+  write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_sub_ave1 sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[1]"
+  call lammps_command(lmp, command_line)
+  write(command_line, '(A38, 2(1X,I3), A15)') "fix dy_sub_ave1 sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_sub[2]"
+  call lammps_command(lmp, command_line)
+  write(command_line, '(A38, 2(1X,I3), A15)') "fix dz_sub_ave1 sub_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " v_dz_all"
+  call lammps_command(lmp, command_line)
 
 
   ! ---- Compute used for virial stress on atoms
@@ -476,12 +500,21 @@ subroutine initialize_lammps(Id,X,Ix,F,B,Itx,lmp)
   call lammps_extract_global(yhi, lmp, 'boxyhi')
 
 
+  
+  
+  
+  call lammps_command(lmp, "thermo 1")
+  call lammps_command(lmp,"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_sub_temp c_pe c_ke vol")
+
+  
+  
+
   ! ---- Dump data file 
-  write(command_line, '(A18,I3,A99)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg.gz id type x y z f_dx_sub_ave f_dy_sub_ave fx fy fz vx vy vz f_dx_ave f_dy_ave"
+  write(command_line, '(A18,I3,A99)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg.gz id type x y z c_dx_sub[*] c_dx_all[*] f_dx_sub_ave f_dy_sub_ave"
   call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
 
   call lammps_command(lmp, "run 0")
-  call lammps_command(lmp, "write_restart restart.cadd")
+!!$  call lammps_command(lmp, "write_restart restart.cadd")
 
 end subroutine initialize_lammps

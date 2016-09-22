@@ -366,7 +366,7 @@
 	 if (lammps_equil) then 
 	    lammps_equil = .false. 
 	    call lammps_command(lmp, "unfix int_sub")
-	    call lammps_command(lmp, "unfix int_part")
+!!$	    call lammps_command(lmp, "unfix int_part")
 	    call lammps_command(lmp, "fix int_md md_atoms nve/limit 0.5")
 	    write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
 	    call lammps_command(lmp, command_line)  
@@ -374,7 +374,7 @@
 	 
          do jstep = 1, 1
             if (istep < lammps_loop) then
-               write(command_line, *) "run ", fem_call_back_steps, " pre yes post no"
+               write(command_line, *) "run ", fem_call_back_steps, " pre yes post yes"
 
             else
                write(command_line, *) "run ", fem_call_back_steps, " pre yes post yes"
@@ -391,7 +391,7 @@
 !               update_pad = .true.
                update_all = .false. 
                call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
-               call lammps_command(lmp,'run 0 pre yes post no')
+               call lammps_command(lmp,'run 0 pre yes post yes')
 
 
                restartAveraging = .true.

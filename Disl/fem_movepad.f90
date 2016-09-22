@@ -74,44 +74,7 @@ SUBROUTINE FEM_MOVE_PAD(X,B,Ix,Bc,Prop,Cz,Id,Is_relaxed,E_out,&
       IF ( Movedisl ) THEN
          CALL FD_PEACH_KOELLER(rhs)
          call move_dis(10.0,MDTemp)
-        print *, "Stress and displacement before fullfield ------------------------------------"
-! 	if (ndisl < 1) then 
-! 	  CALL FE_STRESS(11738,Rhs,pks)
-! 	    call print_element(11738, rhs, B)
-! 	    write(*,'(A,I7,6E15.6)') 'Stress in elem = ', i, pks(1:3), pk_stress(1:3,i)/1.602176/1.d-5
-! 	end if
-! 	do i = 1, ndisl
-! 	  if (elem_disl(i) > 0) then 
-! 	    CALL FE_STRESS(ELEm_disl(i),Rhs,pks)
-! 	    call print_element(ELEm_disl(i), rhs, B)
-! 	    write(*,'(A,I7,6E15.6)') 'Stress on disl = ', i, pks(1:3), pk_stress(1:3,i)/1.602176/1.d-5
-! 	  end if
-! 	end do
 
-!!$         IF ( NDIsl>0 ) THEN
-!!$            IF ( Ifem==1 ) THEN
-!!$               PRINT * , ' --- Entering Move Disl --'
-!!$                 ! call fd_peach_koeller(rhs)
-!!$               CALL MOVE_DISLOC(rhs)
-!!$               CALL NUCLEATE_DISL(rhs)
-!!$               DTIme_dd = DTIme_dd + TINcr
-!!$               PRINT * , 'Dtime_dd =' , DTIme_dd
-!!$            ELSE
-!!$               TINcr = TINCR_SAV/100.0D0
-!!$               PRINT * , ' --- Entering Move Disl --'
-!!$                 ! call fd_peach_koeller(rhs)
-!!$               CALL MOVE_DISLOC(rhs)
-!!$               CALL NUCLEATE_DISL(rhs)
-!!$               DTIme_dd = DTIme_dd + TINcr
-!!$               PRINT * , 'Dtime_dd =' , DTIme_dd
-!!$!
-!!$            ENDIF
-!!$         ELSEIF ( Ifem==1 ) THEN
-!!$            CALL MOVE_DISLOC(rhs)
-!!$            CALL NUCLEATE_DISL(rhs)
-!!$            DTIme_dd = DTIme_dd + TINcr
-!!$            PRINT * , 'Dtime_dd =' , DTIme_dd
-!!$         ENDIF
       ENDIF
 
       DO i = 1 , NFIxed
@@ -128,18 +91,6 @@ SUBROUTINE FEM_MOVE_PAD(X,B,Ix,Bc,Prop,Cz,Id,Is_relaxed,E_out,&
 !!$!       update b so b=u_hat+u_tilda
       IF ( Fullfield ) then 
 	CALL FD_FULL_FIELD(rhs,B)
-! 	if (ndisl < 1) then 
-! 	  CALL FE_STRESS(11738,Rhs,pks)
-! 	    call print_element(11738, rhs, B)
-! 	    write(*,'(A,I7,6E15.6)') 'Stress in elem = ', i, pks(1:3), pk_stress(1:3,i)/1.602176/1.d-5
-! 	end if
-! 	do i = 1, ndisl
-! 	  if (elem_disl(i) > 0) then 
-! 	    CALL FE_STRESS(ELEm_disl(i),Rhs,pks)
-! 	    call print_element(ELEm_disl(i), rhs, B)
-! 	    write(*,'(A,I7,6E15.6)') 'Stress on disl = ', i, pks(1:3), pk_stress(1:3,i)/1.602176/1.d-5
-! 	  end if
-! 	end do
       ENDIF
 !!$!       compute total strain energy of fem region
       CALL FE_STRESS_CHECK(rhs,Straine0)
@@ -164,8 +115,7 @@ SUBROUTINE FD_MOVEPAD(X,Rhs,B)
          DO j = 1 , NDOF
             B(j,n) = 0.D0
             DO k = 1 , KNODE
-               B(j,n) = B(j,n) + Rhs((ICOnn(k,lmn)-1)*NDOF+j)&
-                    &                  *PADtricoord(k,i)
+               B(j,n) = B(j,n) + Rhs((ICOnn(k,lmn)-1)*NDOF+j)*PADtricoord(k,i)
             ENDDO
          ENDDO
          CALL DISL_DISPL(X(1,n),u_out)

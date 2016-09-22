@@ -204,9 +204,9 @@ contains
        if (update_def) then 
           lmpatom = lammps_cadd_gmap(iatom)
           if (lmpatom >=1 .and. lmpatom <= natoms) then 
-	    rtemp = atomcoord(1:3,iatom) + atomdispl(1:3,iatom) - rcoords(1:3,lmpatom)
+!!$	    rtemp = atomcoord(1:3,iatom) + atomdispl(1:3,iatom) - rcoords(1:3,lmpatom)
 	    prev_displ = rcoords(1:3,lmpatom) - atomcoord(1:3,iatom)
-	    write(*,'(A,2I8,4(1X,E15.6))') 'Pad atom Displacement ', iatom, lmpatom, atomcoord(1,iatom), rcoords(1,lmpatom)-prev_displ(1)
+!!$	    write(*,'(A,2I8,4(1X,E15.6))') 'Pad atom Displacement ', iatom, lmpatom, atomcoord(1,iatom), rcoords(1,lmpatom)-prev_displ(1)
 	    rcoords(1,lmpatom) = atomcoord(1,iatom) + atomdispl(1,iatom)
 	    rcoords(2,lmpatom) = atomcoord(2,iatom) + atomdispl(2,iatom)
 	    rcoords(3,lmpatom) = atomcoord(3,iatom) + atomdispl(3,iatom)
@@ -278,14 +278,19 @@ contains
     real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_xy => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_zx => NULL()
     real (C_double), dimension(:), pointer :: compute_lammps_avg_stress_yz => NULL()
+    
+    integer (kind=C_int) :: n_lammps_atoms
 
 
 
-    integer :: iatom, i, j, nsize, lmpatom, itest
+    integer :: iatom, i, j, lmpatom, itest
 
     z2 = z_length/2.d0;
     print *, 'Periodic box length = ', z2
 
+    n_lammps_atoms = lammps_get_natoms(lmp)
+    call lammps_extract_atom(lammps_coord, lmp, 'x')
+    
     call lammps_extract_atom(lammps_force, lmp, 'f')
 
     call lammps_extract_atom(lammps_velocity, lmp, 'v')
@@ -328,25 +333,27 @@ contains
 
              lmpatom = lammps_cadd_map(iatom)
 
-             !print*,'lmpatom update_cadd', lmpatom
-             if (lmpatom >= 1 .AND. lmpatom <= nsize) then
+             
+             if (lmpatom >= 1 .AND. lmpatom <= n_lammps_atoms) then
 
 		Atomforce(1:NDF,iatom) = lammps_force(1:NDF,lmpatom)
 
 		Velocity(1:NDF,iatom) = lammps_velocity(1:NDF,lmpatom)
 
-		AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF, lmpatom)
+		AtomDispl(1:NDF,iatom) = compute_lammps_dx(1:NDF,lmpatom)
+!!$		AtomDispl(1:NDF,iatom) = lammps_coord(1:NDF,lmpatom) - AtomCoord(1:NDF, iatom)
+!!$		write(*,'(A,2I8,3(1X,E15.6))') 'lmpatom update_cadd', iatom, lmpatom, AtomDispl(1:NDF,iatom)
 
 !!$             New average for substrate atoms
 		B_ave(1,iatom) = compute_lammps_avg_sub_dx(lmpatom)
 		B_ave(2,iatom) = compute_lammps_avg_sub_dy(lmpatom)
 		B_ave(3,iatom) = compute_lammps_avg_sub_dz(lmpatom)
-		if (abs(B_ave(3,iatom)) > z2) then
-		    itest = int(abs(B_ave(3,iatom))/z2)
-		    test = abs(B_ave(3,iatom))-itest*z2
-		    test = sign(test, B_ave(3,iatom))
-		    B_ave(3,iatom) = test
-		end if
+!!$		if (abs(B_ave(3,iatom)) > z2) then
+!!$		    itest = int(abs(B_ave(3,iatom))/z2)
+!!$		    test = abs(B_ave(3,iatom))-itest*z2
+!!$		    test = sign(test, B_ave(3,iatom))
+!!$		    B_ave(3,iatom) = test
+!!$		end if
 
 		if (isRelaxed(iAtom) == IndexInterface) then 
 		    AveDispl(1, iatom) = compute_lammps_avg_dx(lmpatom)
@@ -386,8 +393,6 @@ contains
 		AveVirst(2,1,iAtom) = AveVirst(1,2,iAtom)
 		AveVirst(3,1,iAtom) = AveVirst(1,3,iAtom)
 		AveVirst(3,2,iAtom) = AveVirst(2,3,iAtom)
-	    else 
-		print *, 'Wrong atom', iatom, lmpatom
              end if
           end if
        end if

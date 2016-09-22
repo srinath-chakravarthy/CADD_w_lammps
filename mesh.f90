@@ -141,7 +141,7 @@
          xx = i*dx
          IF ( ABS(xx)<=xmax(nxregions) ) THEN
 !
-            DO j = -numy , 0
+            DO j = -numy , numy
 !
                yy = j*dy
                IF ( ABS(yy)<=ymax(nyregions) ) THEN
@@ -354,7 +354,7 @@
 !     store all boundary points, but put crack faces at the beginning of
 !     elist.  While you are at it, apply the b.c.s
 
-         IF ( bot .OR. right .OR. left ) THEN
+         IF ( top .or. bot .OR. right .OR. left ) THEN
             NCE = NCE + 1
             IF ( NCE>NCEmax ) THEN
                IF ( NCE>NCEmax ) CALL INCREASEELIST(100)
@@ -362,7 +362,7 @@
             ELIst(1,NCE) = i
 
 ! apply the b.c's
-            IF ( bot .OR. right .OR. left ) THEN
+            IF ( top .or. bot .OR. right .OR. left ) THEN
 !$$$            if (bot) then
                Id(1,i) = 1
                Id(2,i) = 1
@@ -443,7 +443,7 @@
 
       NCE = 0
       NCB = 0
-      ELIST = 0
+      !ELIST = 0
 
 !     Triangulate, sets all elements to material 1 for this mesh
       PRINT * , 'Triangulating'
@@ -528,7 +528,7 @@
       numy = INT(ymax(2)/dy) + 1
       dwnumx = INT(xmax(2)/dwfactorx/dx) + 1
       dwnumy = INT(ymax(2)/dwfactory/dy) + 1
-      dwnumy = 0
+      !dwnumy = 0
       DO i = -dwnumx , numx
          xx = i*dx
          DO j = -numy , dwnumy
@@ -633,7 +633,9 @@
       NUMnpp1 = -1
 
 
-      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), 0.0)
+      !!$call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), 0.0)
+      call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), ymax(1) + pad_width+10.0)
+
 
 !     Create a detection band
 !     Identify a path, defined by a closed polygon, ccw around the
@@ -664,7 +666,7 @@
 !      nr4 = INT((ABS(detectionband%ymax)-mindb)/dy) + 1
 
 !      NDBpoly = MAX(nr1,nr2,nr3,nr4) + 1
-      NDBpoly = 2
+      NDBpoly = 0
       PRINT * , 'Detection band' , nr1 , nr2 , nr3 , nr4 , NDBpoly
       CALL ALLOCATE_DB
 

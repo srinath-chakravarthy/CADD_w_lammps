@@ -312,7 +312,7 @@
 !!$         write(command_line, fmt='(A18,I4,A55)') "dump 1 all custom ", total_lammps_steps, " atom_lmp*.cfg id type x y z c_dx_all[1], c_dx_all[2]"
 !!$         call lammps_command(lmp, command_line)
          
-!!$         call lammps_command(lmp, "run 0 pre yes post no")
+!!$         call lammps_command(lmp, "run 0 pre no post no")
         !    --Initialize data
 !!$         DO iatom = 1 , NUMnp
 !!$            IF ( ISRelaxed(iatom)==INDexatom .OR. ISRelaxed(iatom)==INDexinterface ) THEN
@@ -324,14 +324,14 @@
          ifem = 0
 
 !!$      equilibrate for a number of steps (set in md.inp)
-         write(command_line,*) "run ", num_initial_equil
-         call lammps_command(lmp, command_line)
+!!$         write(command_line,*) "run ", num_initial_equil
+!!$         call lammps_command(lmp, command_line)
 !!$         call lammps_command(lmp, "unfix fix_integ")
-         call lammps_command(lmp, "unfix int_sub")
-         call lammps_command(lmp, "unfix int_part")
-         call lammps_command(lmp, "fix int_md md_atoms nve")
-         write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
-         call lammps_command(lmp, command_line)  
+!!$         call lammps_command(lmp, "unfix int_sub")
+!!$         call lammps_command(lmp, "unfix int_part")
+!!$         call lammps_command(lmp, "fix int_md md_atoms nve")
+!!$         write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
+!!$         call lammps_command(lmp, command_line)  
 
 !!$      recalculate fem forces after equilibration
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
@@ -364,10 +364,10 @@
          ! ---- Lammps is basically run one step at a time
          do jstep = 1, 1
             if (istep < lammps_loop) then
-               write(command_line, *) "run ", fem_call_back_steps, " pre yes post no"
+               write(command_line, *) "run ", fem_call_back_steps, " pre no post no"
 
             else
-               write(command_line, *) "run ", fem_call_back_steps, " pre yes post yes"
+               write(command_line, *) "run ", fem_call_back_steps, " pre no post yes"
             end if
             if (mod(femstepcounter, femsteps) == 0) then
                ifem = ifem + 1
@@ -381,6 +381,7 @@
 !               update_pad = .true.
                update_all = .false. 
                call update_lammps_coords(AtomCoord, AtomDispl, update_pad, update_all, lmp)
+!!$            pre yes here to initialize ensemble change to nve of md_atoms (if statement at end)               
                call lammps_command(lmp,'run 0 pre yes post no')
 
 
@@ -505,6 +506,16 @@
          
          mdsteps = mdsteps + fem_call_back_steps
 
+         IF (MDsteps .eq.  num_initial_equil) THEN
+
+             
+            call lammps_command(lmp, "unfix int_sub")
+            call lammps_command(lmp, "unfix int_part")
+            call lammps_command(lmp, "fix int_md md_atoms nve")
+            write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
+            call lammps_command(lmp, command_line)  
+
+         ENDIF
 
       end do
 99002 FORMAT (a16,2x,1pe11.4)

@@ -265,7 +265,7 @@
             
             if (material(1)%structure == 'hex') then 
                 !---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
-                write(command_line,'(A,1F15.5)') 'lattice hex ', a0
+                write(command_line,'(A,1F15.5)') 'lattice hcp ', a0
                 call lammps_command(lmp, command_line)
                 !call lammps_command(lmp, 'lattice hex 2.85105')
                 else 
@@ -322,11 +322,26 @@
         call lammps_command(lmp, "group pad_atoms type 2")
         call lammps_command(lmp, "group interface_atoms type 3")
         call lammps_command(lmp, "group langevin_atoms type 3 4")
+        
+        !! --- add in for particle rotation by theta degrees ---
+        !!!!!!!!!!!!!!READ IN PERPENDICULAR DIRECTION FROM CADD
+        if (theta /= 0) then
+           theta = particle_rotation
+           write(command_line,'(A,1F9.3,A,1F9.3,A)') 'displace_atoms particle_atoms rotate 0.0 ', particle_height + particle_radius, ' 0.0 0 0 1 ', theta, ' units box'
+           call lammps_command(lmp, command_line)      
+        end if        
 
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
-!!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
-        call lammps_command(lmp, "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al Al")
+        
+        if (nmaterials == 1) then 
+           if (material(1)%structure == 'hex') then 
+              !---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
+              call lammps_command(lmp, "pair_coeff * * Al_adams_hex.eam.alloy Al Al Al Al Al")
+           else 
+              call lammps_command(lmp, "pair_coeff * * Al_adams.eam.alloy Al Al Al Al Al")	  
+           end if
+        end if
 
         call lammps_command(lmp, "neighbor 0.1 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
@@ -397,12 +412,11 @@
         call lammps_command(lmp, "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0")
  
 !!$ 2D material fixes (hex)    
-    if (nmaterials == 1) then 
-	  if (material(1)%structure == 'hex') then 
-	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
-        call lammps_command(lmp, "fix fix_2d all enforce2d")
-	  end if 
-	end if
+       if (nmaterials == 1) then 
+          if (material(1)%structure == 'hex') then 
+             call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+          end if 
+       end if
         
 
         ! ------------- Various computes -------------------------------
@@ -449,7 +463,7 @@
 
 
         ! ---- Dump data file 
-        write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] c_dx_all[3] fx fy fz vx vy vz"
+        write(command_line, '(A18,I3,A84)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] c_dx_all[3] fx fy fz vx vy vz"
         call lammps_command(lmp, command_line)
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         

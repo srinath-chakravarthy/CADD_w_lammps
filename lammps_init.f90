@@ -259,16 +259,21 @@
 
 
 	! --- Todo put in langevin in the input file to say that there is a stadium ....
-	call lammps_command(lmp, "fix fix_integ md_atoms nve")
+!!$ call lammps_command(lmp, "fix fix_integ md_atoms nve")
+    write(command_line, fmt='(A36, 3(1X,F15.6), I8, A10, 7(1X,F15.6))') "fix fix_integ md_atoms nve/stadium ", &
+    tstart, tstop, damp_coeff, 699483, "  stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
+    -100000.00, 1000000.00, stadium_width
+    call lammps_command(lmp, command_line)
+!!$ call lammps_command(lmp, "fix fix_integ md_atoms nve/stadium ")
     
 !!$	write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 5(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
 !!$	  tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, stadium_width
 !!$	call lammps_command(lmp, command_line)
     
-    write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
-       tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
-       -100000.00, 1000000.00, stadium_width
-    call lammps_command(lmp, command_line)
+!!$    write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+!!$       tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
+!!$       -100000.00, 1000000.00, stadium_width
+!!$  call lammps_command(lmp, command_line)
 
 	! ----------------------------------------------------------------------------------
 
@@ -308,7 +313,7 @@
     if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
-        call lammps_command(lmp, "fix fix_2d all enforce2d")
+!!$        call lammps_command(lmp, "fix fix_2d all enforce2d")
 	  end if 
 	end if
         

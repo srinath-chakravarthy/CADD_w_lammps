@@ -19,6 +19,9 @@
 !**   matgrain -  material in the grain
 !**   xlatvect(3,3) -  lattice vectors defining natural coordinates of
 !**   the grain
+!**   xlatvectmiller(3,3) - lattice vectors definiing natural coords
+!**   of the grain in miller indices (xlatvect gets normalized)
+!**   for use generalizing orientations between CADD and LAMMPS
 !**   rotation -  rotation (degrees) of the natural coordinates defining
 !**   the grain
 !**   rotmat -  rotation matrix elements
@@ -58,7 +61,7 @@
          DOUBLE PRECISION , DIMENSION(3) :: DCELL
 !     stuff for grain structure and energy
          DOUBLE PRECISION ROTATION , XLATVECT(3,3) , ROTMAT(2) , &
-     &                    REFATOM(3)
+     &                    REFATOM(3), XLATVECTMILLER(3,3)
          INTEGER MATGRAIN , NUMVRTS
          DOUBLE PRECISION , DIMENSION(:) , POINTER :: FUDGEVEC , &
      &                                RFUDGVEC
@@ -318,6 +321,9 @@
          q(3,1) = q(1,2)*q(2,3) - q(1,3)*q(2,2)
          q(3,2) = q(1,3)*q(2,1) - q(1,1)*q(2,3)
          q(3,3) = q(1,1)*q(2,2) - q(1,2)*q(2,1)
+
+!Store q in XLATVECTMILLER before normalizing 
+GRAins(i)%XLATVECTMILLER(:,:) = q(:,:)
  
 !Normalise the  vectors
          DO j = 1 , 3

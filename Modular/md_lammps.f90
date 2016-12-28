@@ -124,6 +124,10 @@
 !*--DOSTEPS1325
       INTEGER MAXATOMS
       PARAMETER (MAXATOMS=300000)
+
+      !!--- parameters for angled particle impact
+      double precision :: ia_rad, vx, vy, Pi
+      DATA Pi/3.1415927/
 !
       INTEGER N , Ix(*) , Atomid(NDF,*) , Iprint , Itx(*) , Rseed , &
      &        numdis , numh
@@ -245,6 +249,14 @@
       READ (200,*) impact_angle      
       CLOSE (200)
       
+      ! ---- checking and unit checking damp coeff units
+      if (damp_coeff > 0.0) then 
+          damp_coeff = 1.0/(damp_coeff)
+        ! TODO error handler 
+      end if
+      
+      !!! Once again assuming metal units in lammps
+      damp_coeff = damp_coeff / 1.0d-12
       
       ! ---- Lammps is run for fem_call_back_steps for a total of total_lammps_steps
       ! ---- so that the main loop is only for lammps_loop
@@ -323,16 +335,6 @@
          solveFEM = .false.
          ifem = 0
 
-!!$      equilibrate for a number of steps (set in md.inp)
-!!$         write(command_line,*) "run ", num_initial_equil
-!!$         call lammps_command(lmp, command_line)
-!!$         call lammps_command(lmp, "unfix fix_integ")
-!!$         call lammps_command(lmp, "unfix int_sub")
-!!$         call lammps_command(lmp, "unfix int_part")
-!!$         call lammps_command(lmp, "fix int_md md_atoms nve")
-!!$         write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
-!!$         call lammps_command(lmp, command_line)  
-
 !!$      recalculate fem forces after equilibration
          CALL GETFEM_FORCES(Atomid,Atomcoord,Ix,F,Atomdispl,&
      &                                AVEdispl,Atomforce,atommass,&
@@ -364,10 +366,10 @@
          ! ---- Lammps is basically run one step at a time
          do jstep = 1, 1
             if (istep < lammps_loop) then
-               write(command_line, *) "run ", fem_call_back_steps, " pre no post no"
+               write(command_line, *) "run ", fem_call_back_steps, " pre yes post no"
 
             else
-               write(command_line, *) "run ", fem_call_back_steps, " pre no post yes"
+               write(command_line, *) "run ", fem_call_back_steps, " pre yes post yes"
             end if
             if (mod(femstepcounter, femsteps) == 0) then
                ifem = ifem + 1
@@ -508,12 +510,36 @@
 
          IF (MDsteps .eq.  num_initial_equil) THEN
 
-             
-            call lammps_command(lmp, "unfix int_sub")
-            call lammps_command(lmp, "unfix int_part")
-            call lammps_command(lmp, "fix int_md md_atoms nve")
-            write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
-            call lammps_command(lmp, command_line)  
+            !!no longer needed with one nve/stadium fix? 
+            !call lammps_command(lmp, "unfix int_sub")
+            !call lammps_command(lmp, "unfix int_part")
+            !call lammps_command(lmp, "unfix part_temp_eq")
+            !write(command_line, fmt='(A36, 3(1X,F15.6), I8, A10, 7(1X,F15.6))') "fix int_md md_atoms nve/stadium ", &
+            !tstart, tstop, damp_coeff, 699483, "  stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
+            !-100000.00, 1000000.00, stadium_width
+            !call lammps_command(lmp, command_line) 
+            
+            !!--- If hex material, then set z velocity to 0...must do after new nve/stadium fix
+            !!--- since this adjusts velocities
+            if (material(1)%structure == 'hex') then 
+
+              call lammps_command(lmp, "velocity sub_atoms set NULL NULL 0.0 units box")
+              call lammps_command(lmp, "velocity particle_atoms set NULL NULL 0.0 units box")
+            end if
+            
+            !!--- statement for angled impacts
+            if (impact_angle /= 0) then
+	            ia_rad = impact_angle/180.0*Pi
+	            vx = -particle_velocity*COS(ia_rad)
+	            vy = particle_velocity*SIN(ia_rad)
+	            print*, 'vx is: ', vx
+	            print*, 'vy is: ', vy
+	            write(command_line, '(A,2F15.6,A)') 'velocity particle_atoms set ', vx, vy, ' NULL sum yes units box'
+	            call lammps_command(lmp, command_line)
+	          else
+	           write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'
+	           call lammps_command(lmp, command_line)        
+	          end if
 
          ENDIF
 

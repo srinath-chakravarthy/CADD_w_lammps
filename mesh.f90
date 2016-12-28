@@ -645,7 +645,7 @@
 
       usedetectionband = .TRUE.
       IF ( .NOT.usedetectionband ) THEN
-         NDBpoly = 0
+         NDBpoly = 2 
 !         GOTO 100
       ENDIF
 
@@ -664,7 +664,7 @@
 !      nr4 = INT((ABS(detectionband%ymax)-mindb)/dy) + 1
 
 !      NDBpoly = MAX(nr1,nr2,nr3,nr4) + 1
-      NDBpoly = 2
+      NDBpoly = 2 
       PRINT * , 'Detection band' , nr1 , nr2 , nr3 , nr4 , NDBpoly
       CALL ALLOCATE_DB
 

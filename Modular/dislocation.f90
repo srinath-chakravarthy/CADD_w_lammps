@@ -953,7 +953,12 @@
       q2(2,1) = Rotmat(2)
       q2(3,3) = 1.D0
       q2 = MATMUL(q2,Q)
-!
+      !
+      print *,"Rotation Matrix 1"
+      write(6,fmt='(8x,3F10.5)') ((Q(i,j),i=1,3),j=1,3)
+      print *,"Rotation Matrix 2"
+      write(6,fmt='(8x,3F10.5)') ((q2(i,j),i=1,3),j=1,3)
+      
       NBUrger = 0
       IF ( Struct=='fcc' ) THEN
          a6 = A0/6.D0
@@ -970,6 +975,8 @@
                      NBUrger = NBUrger + 1
                      NORmal(1:3,NBUrger) = m
                      BURg(1:3,NBUrger) = is*MATMUL(q2,b1)
+                     write(6, fmt='(I7, 3x, 3(3x,F10.5))') nburger, m(1:3)
+                     write(6, fmt='(I7, 3x, 3(3x,F10.5))') nburger, burg(1:3,nburger)
                      BURg(4,NBUrger) = SQRT(DOT_PRODUCT(b1,b1))
                      CALL GETSTRAIN(BURg(1:3,NBUrger),d,m, EPSlib(1:3,1:3,NBUrger),FLIb(1:3,1:3,NBUrger))
                   ENDDO

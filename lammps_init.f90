@@ -265,7 +265,7 @@
             
             if (material(1)%structure == 'hex') then 
                 !---- This is a 2d Problem so the temperature compute is restricted to partial in the xy plane
-                write(command_line,'(A,1F15.5)') 'lattice hex ', a0
+                write(command_line,'(A,1F15.5)') 'lattice hcp ', a0
                 call lammps_command(lmp, command_line)
                 !call lammps_command(lmp, 'lattice hex 2.85105')
                 else 
@@ -400,7 +400,7 @@
     if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
-        call lammps_command(lmp, "fix fix_2d all enforce2d")
+!         call lammps_command(lmp, "fix fix_2d all enforce2d")
 	  end if 
 	end if
         

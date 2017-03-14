@@ -233,10 +233,16 @@ SUBROUTINE MOVE_DIS(Alpha,Temperature)
 !!$   New dd parameters 
       double precision :: velocity
 
-!
+!!$   cannot read from md.inp...error: 'This name does not have a type, and must have an explicit type'
+!!$      OPEN (UNIT=200,FILE='md.inp',STATUS='old')
+!!$      CLOSE (200)
+
+
 !!!!    hacked parameters
       min_pos = -10.0
-      time_step_con = 20.0d0*1.0e-15;
+!!$    HARD CODED! Should be based on input md.inp     
+!!$      time_step_con = fem_update_steps*1.0e-15;
+      time_step_con = 20.0D0*1.0e-15;
 !C--Jun Song: make sure temperature>0.0
       IF ( Temperature<0.0D0 ) THEN
          WRITE (*,*) "Temperature less than Zero!!!"
@@ -247,19 +253,26 @@ SUBROUTINE MOVE_DIS(Alpha,Temperature)
 !C--Change the stacking fault E for different materials
       !!mobility = time_step_con/(6.242E-2*5.0E-8*Temperature)
       if (temperature < 1.0d0) then 
-	temperature = 1.0d0
+	      temperature = 1.0d0
       end if
-      mobility = 5.0d-8/(160.217648d9)*temperature
+      
+!$$    160.217 Gpa = eV/A3 conversion
+!$$    mobility = 5.0d-8/(160.217648d9)*temperature
+!!$    correct value for aluminum 
+      mobility = 3.9d-8/(160.217648d9)*temperature
       
         ! 3rd parameter (5.0e-8) is damp coef from Olmstead paper
         ! "Atomistic simulations of dislocation mobility.."
-        max_vel = 2000.d0*1e10 !> A/s 
+       
+      max_vel = 2000.d0*1e10 !> A/s 
         
 !!$      max_vel = time_step_con*2000.0
 !!$      sf_f = .089*6.242E-2 ! sf energy in J/m2,i.e., 0.089
-	sf_f = 0.0d0 ! hex al no stacking fault eneregy
+!!$	sf_f = 0.0d0 ! hex al no stacking fault eneregy
+      sf_f = 0.128*6.242e-2 ! LEA sf energy is 0.128 J/m2
 !!!!    end of hacked parameters
- 
+
+     
       DO i = 1 , NDIsl
 	 disl_timer(i) = disl_timer(i) + 1
          IF ( ELEm_disl(i) > 0 ) THEN

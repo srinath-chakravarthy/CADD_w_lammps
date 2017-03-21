@@ -43,8 +43,8 @@
         READ (200,*) particle_velocity
         READ (200,*) particle_radius
         READ (200,*) particle_height
-        READ (200,*) particle_rotation
-        READ (200,*) impact_angle
+!         READ (200,*) particle_rotation
+!         READ (200,*) impact_angle
         CLOSE (200)
         
         
@@ -216,6 +216,7 @@
         USE MOD_DISL_PARAMETERS
         
         implicit none
+        
 
         type (c_ptr) :: lmp
         !     Input variables
@@ -233,6 +234,8 @@
         real (C_double), pointer :: xhi => NULL()
         real (C_double), pointer :: ylo => NULL()
         real (C_double), pointer :: yhi => NULL()
+        
+        open(unit=201,file='lammps.inp', status='unknown')
         
 !!$ --- For now assume single grain/material to be modified for multiple grains
         if (nmaterials == 1) then 
@@ -257,6 +260,12 @@
         call lammps_command(lmp, 'boundary ss sm pp')
 !!$        call lammps_command(lmp, 'boundary ff ff pp')
         call lammps_command(lmp,'atom_modify sort 0 0.0 map array')
+        write(201,fmt='(A)') 'units metal'
+        write(201,fmt='(A)') 'atom_style atomic'
+        write(201,fmt='(A)') 'dimension 3'
+        write(201,fmt='(A)') 'boundary ss sm pp'
+        write(201,fmt='(A)') 'atom_modify sort 0 0.0 map array'
+        
 
         !!JM: hcp lattice with short z cylinder region length gives a planar hex lattice
         !!JM: with a little hack using the burger's vector as the lattice constant a
@@ -268,7 +277,8 @@
                 write(command_line,'(A,1F15.5)') 'lattice hcp ', a0
                 call lammps_command(lmp, command_line)
                 !call lammps_command(lmp, 'lattice hex 2.85105')
-                else 
+                write(201,fmt='(A)') adjustl(trim(command_line))
+            else 
                 !!call lammps_command(lmp, 'lattice fcc 4.032')
                 !!write(command_line,'(A,1F15.5)') 'lattice hex ', a0
                 !!call lammps_command(lmp, command_line)
@@ -283,11 +293,14 @@
                 !!write(command_line,'(A,1F15.5,A,3F15.3)') 'lattice fcc ', a0, ' orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 spacing ', &
                 !!   xperiod, yperiod, zperiod
                 call lammps_command(lmp, command_line)
+                write(201,fmt='(A)') adjustl(trim(command_line))
 
             end if
         end if
         
         call lammps_command(lmp, 'read_data cadd_atoms.dat')
+        
+        write(201,fmt='(A)') 'read_data cadd_atoms.dat'
 
         !!!!!!!!!!!!!FIX THIS!!!!!!!!!!!!!!!!
         !store number of zperiods from CADD into lammps variable 
@@ -296,6 +309,7 @@
         !write(command_line,'(A,1F15.3)') 'variable zperiods equal ', NUMperiodz
         write(command_line,'(A,1F15.3)') 'variable zperiods equal 1.0'
         call lammps_command(lmp,command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
         
         !for no particle impact angle, differentiate hex vs. fcc
         if (nmaterials == 1) then 
@@ -303,17 +317,21 @@
             write(command_line,'(A,2F15.3,A)') 'region 1 cylinder z 0.0 ', &
                particle_height + particle_radius, particle_radius, ' 0.0 0.1 units box'
             call lammps_command(lmp, command_line)
+            write(201,fmt='(A)') adjustl(trim(command_line))
 	      else 
             !!!!!!FIGURE OUT THIS 2.0 vs 1.9 tolerance issue to line up CADD and LAMMPS lattices!!
 	        write(command_line,'(A,4F15.3,A)') 'region 1 cylinder z 0.0 ', &
                particle_height + particle_radius, particle_radius, -grains(1)%dcell(3)/1.9, grains(1)%dcell(3)/2.0, ' units box'
             call lammps_command(lmp, command_line)
+            write(201,fmt='(A)') adjustl(trim(command_line))
           end if
         end if
       
         !! --- creating particle atoms, type 5---
         call lammps_command(lmp, 'create_atoms 5 region 1')   
+        write(201,fmt='(A)') 'create_atoms 5 region 1'
         call lammps_command(lmp, 'group particle_atoms type 5')
+        write(201,fmt='(A)') 'group particle_atoms type 5'
 
         ! --- Create groups of atoms for fixes and computes ----
         call lammps_command(lmp, "group md_atoms type 1 3 4 5")
@@ -323,6 +341,15 @@
         call lammps_command(lmp, "group interface_atoms type 3")
         call lammps_command(lmp, "group langevin_atoms type 3 4")
 
+        write(201,fmt='(A)') "group md_atoms type 1 3 4 5"
+        write(201,fmt='(A)') "group sub_atoms type 1 3 4"
+        write(201,fmt='(A)') "group free_atoms type 1"
+        write(201,fmt='(A)') "group pad_atoms type 2"
+        write(201,fmt='(A)') "group interface_atoms type 3"
+        write(201,fmt='(A)') "group langevin_atoms type 3 4"
+        
+        
+        
         ! ------- EAM potentials
         call lammps_command(lmp, "pair_style eam/alloy")
 !!$        call lammps_command(lmp, "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al")
@@ -331,9 +358,19 @@
         call lammps_command(lmp, "neighbor 0.1 bin ")
         call lammps_command(lmp, "neigh_modify delay 0 every 1 check yes")
 
+        write(201,fmt='(A)') "pair_style eam/alloy"
+!!$        write(201,fmt='(A)') "pair_coeff	* * /home/srinath/lammps_potentials/Al-LEA_hex.eam.alloy Al Al Al"
+        write(201,fmt='(A)') "pair_coeff	* * Al_adams.eam.alloy Al Al Al Al Al"
+
+        write(201,fmt='(A)') "neighbor 0.1 bin "
+        write(201,fmt='(A)') "neigh_modify delay 0 every 1 check yes"
+        
+        
         ! ---------- Various Fixes ----------------------------------------------
         write(command_line,*) "variable mytemp equal", lammps_temperature
         call lammps_command(lmp, command_line) 
+        write(201,fmt='(A)') adjustl(trim(command_line))
+        
 
         !!--- initialize system temperature to 2*desired (NVE ensembles << melting temp)
         if (nmaterials == 1) then 
@@ -343,8 +380,17 @@
             !!--- If hex material, then set z velocity to 0
             call lammps_command(lmp, "velocity sub_atoms set NULL NULL 0.0 units box")
             call lammps_command(lmp, "velocity particle_atoms set NULL NULL 0.0 units box")
+
+            write(201,fmt='(A)') "velocity sub_atoms create $(2.0*v_mytemp) 829863 dist uniform mom yes rot yes"
+            write(201,fmt='(A)') "velocity particle_atoms create $(2.0*v_mytemp) 163103 dist uniform mom yes rot yes"
+            !!--- If hex material, then set z velocity to 0
+            write(201,fmt='(A)') "velocity sub_atoms set NULL NULL 0.0 units box"
+            write(201,fmt='(A)') "velocity particle_atoms set NULL NULL 0.0 units box"
+            
+            
          else 
             call lammps_command(lmp, "velocity sub_atoms create $(2.0*v_mytemp) 426789 dist uniform mom yes rot yes")
+            write(201,fmt='(A)') "velocity sub_atoms create $(2.0*v_mytemp) 426789 dist uniform mom yes rot yes"
             !!call lammps_command(lmp, "velocity particle_atoms create $(2.0*v_mytemp) 849823 dist uniform mom yes rot yes")
          end if
         end if
@@ -352,11 +398,17 @@
         !! --- equilibrate temperature in two NVT ensembles (1 for particle, 1 for substrate)
         call lammps_command(lmp, "fix int_sub sub_atoms nve")
         call lammps_command(lmp, "fix int_part particle_atoms nve")
-    
+
+        write(201,fmt='(A)') "fix int_sub sub_atoms nve"
+        write(201,fmt='(A)') "fix int_part particle_atoms nve"
+
+        
+        
         write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
            tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
            -1000.00, 1000.00, stadium_width
         call lammps_command(lmp, command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
 
         ! ----------------------------------------------------------------------------------
 
@@ -369,13 +421,28 @@
             call lammps_command(lmp, "compute free_temp free_atoms temp/partial 1 1 0")
             call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/partial 1 1 0")
             call lammps_command(lmp, "compute part_temp particle_atoms temp/partial 1 1 0")
-          else 
+
+            write(201,fmt='(A)') "compute md_temp md_atoms temp/partial 1 1 0"
+            write(201,fmt='(A)') "compute sub_temp sub_atoms temp/partial 1 1 0"
+            write(201,fmt='(A)') "compute free_temp free_atoms temp/partial 1 1 0"
+            write(201,fmt='(A)') "compute stadium_temp langevin_atoms temp/partial 1 1 0"
+            write(201,fmt='(A)') "compute part_temp particle_atoms temp/partial 1 1 0"
+            
+            
+        else 
             call lammps_command(lmp, "compute md_temp md_atoms temp/com")
             call lammps_command(lmp, "compute sub_temp sub_atoms temp/com")
             call lammps_command(lmp, "compute free_temp free_atoms temp/com")
             call lammps_command(lmp, "compute stadium_temp langevin_atoms temp/com")
             call lammps_command(lmp, "compute part_temp particle_atoms temp/com")
-          end if 
+
+            write(201,fmt='(A)') "compute md_temp md_atoms temp/com"
+            write(201,fmt='(A)') "compute sub_temp sub_atoms temp/com"
+            write(201,fmt='(A)') "compute free_temp free_atoms temp/com"
+            write(201,fmt='(A)') "compute stadium_temp langevin_atoms temp/com"
+            write(201,fmt='(A)') "compute part_temp particle_atoms temp/com"
+            
+            end if 
         end if
         
         ! ---- average the variance of the temperature 
@@ -391,15 +458,23 @@
         call lammps_command(lmp, "compute pe free_atoms reduce sum c_com_pe")
         call lammps_command(lmp, "compute ke free_atoms ke")
         call lammps_command(lmp, "variable tot_energy equal c_pe+c_ke")
+
+        write(201,fmt='(A)') "compute com_pe free_atoms pe/atom"
+        write(201,fmt='(A)') "compute pe free_atoms reduce sum c_com_pe"
+        write(201,fmt='(A)') "compute ke free_atoms ke"
+        write(201,fmt='(A)') "variable tot_energy equal c_pe+c_ke"
+        
+        
         ! ------------------------------------------------------------------------
         
         !---- Pad atoms always have zero force so this is fixed here to 0 
         call lammps_command(lmp, "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0")
- 
+        write(201,fmt='(A)') "fix fix_zeroforce pad_atoms setforce 0.0 0.0 0.0"
 !!$ 2D material fixes (hex)    
     if (nmaterials == 1) then 
 	  if (material(1)%structure == 'hex') then 
 	    call lammps_command(lmp, "fix fix_2d all setforce NULL NULL 0.0")
+	    write(201,fmt='(A)') "fix fix_2d all setforce NULL NULL 0.0"
 !         call lammps_command(lmp, "fix fix_2d all enforce2d")
 	  end if 
 	end if
@@ -417,15 +492,25 @@
         ! ---- Compute used for average displacement of interface atoms  -----
         call lammps_command(lmp, "compute dx_inter interface_atoms displace/atom")
 
+
+        write(201,fmt='(A)') "thermo 1"
+        write(201,fmt='(A)')"thermo_style custom step c_md_temp c_free_temp c_stadium_temp c_part_temp c_sub_temp c_pe c_ke vol"
+        write(201,fmt='(A)') "compute dx_free free_atoms displace/atom"
+        write(201,fmt='(A)') "compute dx_all all displace/atom"
+        write(201,fmt='(A)') "compute dx_inter interface_atoms displace/atom"
+        
         
         ! ----- Now define a fix to actually calculate the average for interface atoms
         write(command_line, '(A38, 2(1X,I3), A15)') "fix dx_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[1]"
         call lammps_command(lmp, command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
 !!$        call lammps_command(lmp, "fix dx_ave interface_atoms ave/atom 1 25 25 c_dx_inter[1]")
         write(command_line,  '(A38, 2(1X,I3), A15)') "fix dy_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[2]"
         call lammps_command(lmp, command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
         write(command_line,  '(A38, 2(1X,I3), A15)') "fix dz_ave interface_atoms ave/atom 1 ", fem_update_steps, fem_update_steps, " c_dx_inter[3]"
         call lammps_command(lmp, command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
 !!$        call lammps_command(lmp, "fix dy_ave interface_atoms ave/atom 1 25 25 c_dx_inter[2]")
 !!$        call lammps_command(lmp, "fix dz_ave interface_atoms ave/atom 1 25 25 c_dx_inter[3]")
 
@@ -451,9 +536,11 @@
         ! ---- Dump data file 
         write(command_line, '(A18,I3,A74)') "dump 1 all custom ", lammps_output_steps, " atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] c_dx_all[3] fx fy fz vx vy vz"
         call lammps_command(lmp, command_line)
+        write(201,fmt='(A)') adjustl(trim(command_line))
 !!$        call lammps_command(lmp, "dump 1 all custom 200 atom_lmp*.cfg id type x y z c_dx_all[1] c_dx_all[2] fx fy fz")       
         
         call lammps_command(lmp, "run 0")
+        write(201,fmt='(A)') "run 0"
         call lammps_command(lmp, "write_restart restart.cadd")
-       
+        close(201)
       end subroutine initialize_lammps

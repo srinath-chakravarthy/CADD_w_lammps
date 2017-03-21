@@ -703,9 +703,28 @@
       write(201,fmt='(A)') "OutputManager tstep_step 100 dofman_output {1}"
 
 
-      write(201,fmt='(A,I7,A,I7,A)') 'ndofman ', nnodes, ' nelem ', nelm, ' ncrosssect 1 nmat 1 nbc 2 nic 0 nltf 2 nset 2 nxefmman 0'
+      write(201,fmt='(A,I7,A,I7,A)') 'ndofman ', nnodes, ' nelem ', nelm, ' ncrosssect 1 nmat 1 nbc 2 nic 0 nltf 2 nset 0 nxefmman 0'
       do i = 1, nnodes
-	write(201,fmt='(A,I7,A,3F15.7)') "node ", i, " coords 3 ", x0(1,i), x0(2,i), x0(3,i)
+         write(201,fmt='(A,I7,A,3F15.7)', advance = 'no') "node ", i, " coords 3 ", x0(1,i), x0(2,i), x0(3,i)
+         ii = imap(i)
+         if (isrelaxed(ii) == 2) then
+            write(201,fmt='(A,2I2)',advance='no') " bc  2 ", 1, 1
+         else
+            if (id(1,ii) == 1 .or. id(2,ii) == 1) then
+               write(201, fmt='(A)', advance = 'no') " bc 2 "
+               if (id(1,ii) == 1) then 
+                  write(201,fmt='(I1,1X)', advance='no') 2
+               else
+                  write(201,fmt='(I1,1X)', advance='no') 0
+               end if
+               if (id(2,ii) == 1) then 
+                  write(201,fmt='(I1)',advance ='no' ) 2
+               else
+                  write(201,fmt='(I1)', advance='no') 0
+               end if
+            end if
+         end if
+         write(201,*)
       end do
 	
       do i = 1, nelm
@@ -723,29 +742,29 @@
 	    end if
 	end do
       end do
-      write(201,fmt='(A)', advance='no')  ' tAlpha 0'
-      write(201,fmt='(A)') 'ManualBoundaryCondition 1 loadTimeFunction 1 dofs 1 2 values 2 0.0 0.0 set 1'
-      write(201,fmt='(A)') 'BoundaryCondition 2 loadTimeFunction 2 dofs 1 2 values 2 0.0 0.0 set 2'
+      write(201,fmt='(A)')  ' tAlpha 0'
+      write(201,fmt='(A)') 'ManualBoundaryCondition 1 loadTimeFunction 1 prescribedValue 0.0'
+      write(201,fmt='(A)') 'BoundaryCondition 2 loadTimeFunction 2 prescribedValue 1.0'
       write(201,fmt='(A)') 'ConstantFunction 1 f(t) 1.0'
       write(201,fmt='(A)') 'ConstantFunction 2 f(t) 1.0'
-      do j = 1, 2
-	if (j == 1) then 
-	    iloop = ninter
-	else
-	    iloop = nbc
-	end if
-	write(201,fmt='(A,I2,A,I7)',advance='no') 'Set ', j, ' nodes ', iloop
-	do i= 1, iloop
-	    if (bc_sets(j,1,i) >0 .or. bc_sets(2,2,i) >0 ) then 
-		if (bc_sets(j,1,i) > 0) then 
-		    write(201,fmt='(I7)',advance='no') bc_sets(j,1,i)
-		else
-		    write(201,fmt='(I7)',advance='no') bc_sets(j,1,i)
-		end if
-	    end if
-	end do
-	write(201,*)
-      end do 
+!!$      do j = 1, 2
+!!$	if (j == 1) then 
+!!$	    iloop = ninter
+!!$	else
+!!$	    iloop = nbc
+!!$	end if
+!!$	write(201,fmt='(A,I2,A,I7)',advance='no') 'Set ', j, ' nodes ', iloop
+!!$	do i= 1, iloop
+!!$	    if (bc_sets(j,1,i) >0 .or. bc_sets(2,2,i) >0 ) then 
+!!$		if (bc_sets(j,1,i) > 0) then 
+!!$		    write(201,fmt='(I7)',advance='no') bc_sets(j,1,i)
+!!$		else
+!!$		    write(201,fmt='(I7)',advance='no') bc_sets(j,1,i)
+!!$		end if
+!!$	    end if
+!!$	end do
+!!$	write(201,*)
+!!$      end do 
       
       close(201)
       open(201,file = 'pad_atoms.dat', status='unknown')

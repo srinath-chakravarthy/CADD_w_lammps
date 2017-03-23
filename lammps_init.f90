@@ -404,7 +404,7 @@
 
         
         
-        write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_temp langevin_atoms langevin ", &
+        write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_int md_atoms nve/stadium ", &
            tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
            -1000.00, 1000.00, stadium_width
         call lammps_command(lmp, command_line)

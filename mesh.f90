@@ -67,9 +67,9 @@
       
       
       !---- oofem files
-      integer :: npad, nelm, nnodes, ninter, nbc, iloop
+      integer :: npad, nelm, nnodes, ninter, nbc, iloop, nbc_total
       double precision, DIMENSION(:,:), allocatable :: x0
-      integer, DIMENSION(:), allocatable :: imap, inverse_map, inverse_el_map, padmap
+      integer, DIMENSION(:), allocatable :: imap, inverse_map, inverse_el_map, padmap, bctype
       integer, DIMENSION(:,:), allocatable :: iconn
       integer, DIMENSION(:,:,:), allocatable :: bc_sets
 !c--JS: dwfactor 2 for asym and 1 for sym
@@ -681,7 +681,9 @@
 	    end if
 	end if
       end do
-	
+      
+      
+      nbc_total = nbc + ninter
       do i = 1, numel
 	if (ix(4,i) == 0) then 
 	    nelm = nelm + 1
@@ -703,25 +705,31 @@
       write(201,fmt='(A)') "OutputManager tstep_step 100 dofman_output {1}"
 
 
-      write(201,fmt='(A,I7,A,I7,A)') 'ndofman ', nnodes, ' nelem ', nelm, ' ncrosssect 1 nmat 1 nbc 2 nic 0 nltf 2 nset 0 nxefmman 0'
+      write(201,fmt='(A,I7,A,I7,A,I7,A)') 'ndofman ', nnodes, ' nelem ', nelm, ' ncrosssect 1 nmat 1 nbc ', nbc_total, ' nic 0 nltf 2 nset 0 nxefmman 0'
+      allocate(bctype(nbc_total))
+      k = 1
       do i = 1, nnodes
          write(201,fmt='(A,I7,A,3F15.7)', advance = 'no') "node ", i, " coords 3 ", x0(1,i), x0(2,i), x0(3,i)
          ii = imap(i)
          if (isrelaxed(ii) == 2) then
-            write(201,fmt='(A,2I2)',advance='no') " bc  2 ", 1, 1
+            bctype(k) = 1
+            write(201,fmt='(A,2I7)',advance='no') " bc  2 ", k, k
+            k =k +1
          else
             if (id(1,ii) == 1 .or. id(2,ii) == 1) then
                write(201, fmt='(A)', advance = 'no') " bc 2 "
                if (id(1,ii) == 1) then 
-                  write(201,fmt='(I1,1X)', advance='no') 2
+                  write(201,fmt='(I7,1X)', advance='no') k
                else
                   write(201,fmt='(I1,1X)', advance='no') 0
                end if
                if (id(2,ii) == 1) then 
-                  write(201,fmt='(I1)',advance ='no' ) 2
+                  write(201,fmt='(I7)',advance ='no' ) k
                else
                   write(201,fmt='(I1)', advance='no') 0
                end if
+               bctype(k) = 2
+               k = k + 1
             end if
          end if
          write(201,*)
@@ -743,8 +751,15 @@
 	end do
       end do
       write(201,fmt='(A)')  ' tAlpha 0'
-      write(201,fmt='(A)') 'ManualBoundaryCondition 1 loadTimeFunction 1 prescribedValue 0.0'
-      write(201,fmt='(A)') 'BoundaryCondition 2 loadTimeFunction 2 prescribedValue 1.0'
+      do i = 1, nbc_total
+        if (bctype(i) == 1) then 
+            write(201,fmt='(A,I7,A)') 'ManualBoundaryCondition ',i, ' loadTimeFunction 1 dofs 2 1 2 values 2 0.0 0.0'
+        else
+            write(201,fmt='(A,I7,A)') 'BoundaryCondition ', i, ' loadTimeFunction 2 dofs 2 1 2 values 2 0.0 0.0'
+        end if
+      end do
+      
+      
       write(201,fmt='(A)') 'ConstantFunction 1 f(t) 1.0'
       write(201,fmt='(A)') 'ConstantFunction 2 f(t) 1.0'
 !!$      do j = 1, 2
@@ -771,7 +786,7 @@
       write(201,fmt='(I7)') npad
       do i = 1, npad
 	ii = padmap(i)
-	write(201,fmt='(3F15.7)') x(1,ii), x(2,ii), x(3,ii)
+	write(201,fmt='(3F15.7)') x(1,ii), x(2,ii), 0.0
       end do
       close(201)
       call write_lammps_data(Id, X, Ix, F, B, Itx, -(xmax(1)+pad_width+10.0), xmax(1)+pad_width+10.0,-(ymax(1) + pad_width+10.0), 0.0)

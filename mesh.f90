@@ -709,7 +709,7 @@
       allocate(bctype(nbc_total))
       k = 1
       do i = 1, nnodes
-         write(201,fmt='(A,I7,A,3F15.7)', advance = 'no') "node ", i, " coords 3 ", x0(1,i), x0(2,i), x0(3,i)
+         write(201,fmt='(A,I7,A,3F15.7)', advance = 'no') "node ", i, " coords 3 ", x0(1,i), x0(2,i), 0.0 
          ii = imap(i)
          if (isrelaxed(ii) == 2) then
             bctype(k) = 1

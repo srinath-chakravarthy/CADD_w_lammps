@@ -396,8 +396,8 @@
         end if
         
         !! --- equilibrate temperature in two NVT ensembles (1 for particle, 1 for substrate)
-        call lammps_command(lmp, "fix int_sub sub_atoms nve")
-        call lammps_command(lmp, "fix int_part particle_atoms nve")
+!         call lammps_command(lmp, "fix int_sub sub_atoms nve")
+!         call lammps_command(lmp, "fix int_part particle_atoms nve")
 
         write(201,fmt='(A)') "fix int_sub sub_atoms nve"
         write(201,fmt='(A)') "fix int_part particle_atoms nve"
@@ -405,8 +405,8 @@
         
         
         write(command_line, fmt='(A38,3(1X,F15.6),I7, A10, 7(1X,F15.6))') "fix fix_int md_atoms nve/stadium ", &
-           tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax, &
-           -1000.00, 1000.00, stadium_width
+           tstart, tstop, damp_coeff, 699483, " stadium ", stadium_xmin, stadium_xmax, stadium_ymin, stadium_ymax+20.0, &
+           -1000000.00, 1000000.00, stadium_width
         call lammps_command(lmp, command_line)
         write(201,fmt='(A)') adjustl(trim(command_line))
 

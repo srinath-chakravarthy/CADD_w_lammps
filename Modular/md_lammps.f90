@@ -327,9 +327,9 @@
          write(command_line,*) "run ", num_initial_equil
          call lammps_command(lmp, command_line)
 !!$         call lammps_command(lmp, "unfix fix_integ")
-         call lammps_command(lmp, "unfix int_sub")
-         call lammps_command(lmp, "unfix int_part")
-         call lammps_command(lmp, "fix int_md md_atoms nve")
+!          call lammps_command(lmp, "unfix int_sub")
+!          call lammps_command(lmp, "unfix int_part")
+!          call lammps_command(lmp, "fix int_md md_atoms nve")
          write(command_line, '(A,F15.6,A)') 'velocity particle_atoms set NULL ', particle_velocity, ' NULL sum yes units box'  
          call lammps_command(lmp, command_line)  
 
